@@ -42,6 +42,14 @@ class WebGLTFViewerElement extends LitElement {
 
     this.usePunctual = !this.controls.environment.punctualoff;
     this.useIBL      = !this.controls.environment.useIBL;
+
+    for(const variant of (this.webgltf?.extensions?.KHR_materials_variants?.variants || [])){
+      if(variant.name === this.controls.model.material) {
+        variant.activate(this.renderer.context);
+      } else {
+        variant.deactivate(this.renderer.context);
+      }
+    }
   }
 
   async connectedCallback() {

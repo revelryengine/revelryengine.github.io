@@ -20,8 +20,9 @@
                 const environment = await Environment.load('https://raw.githubusercontent.com/webgltf/webgltf-sample-models/main/environments/green_sanctuary/green_sanctuary_256.gltf');
 
                 const renderer = new Renderer('#main', { environment });
-                const scene = webgltf.scene || webgltf.scenes[0];
                 const animator = new Animator(webgltf.animations);
+                
+                const scene = webgltf.scene || webgltf.scenes[0];
 
                 const cameraNodes = []; // find all cameras in scene
                 for(const node of scene.depthFirstSearch()) {

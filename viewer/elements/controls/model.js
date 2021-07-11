@@ -15,9 +15,10 @@ for(const sample of index) {
 class WebGLTFViewerControlModelElement extends WebGLTFParamElement {
   static get properties() {
     return {
-      sample:  { type: String,  reflect: true, param: true },
-      variant: { type: String,  reflect: true, param: true },
-      loading: { type: Boolean, reflect: true },
+      sample:   { type: String,  reflect: true, param: true },
+      variant:  { type: String,  reflect: true, param: true },
+      material: { type: String,  reflect: true, param: true },
+      loading:  { type: Boolean, reflect: true },
     }
   }
   connectedCallback(){
@@ -46,10 +47,9 @@ class WebGLTFViewerControlModelElement extends WebGLTFParamElement {
 
     return html`
       <webgltf-viewer-control-group name="Model">
-        <label for="sample">Sample</label>
         ${this.getSampleSelect()}
-        <label for="variant">Variant</label>
         ${this.getSampleVariantSelect()}
+        ${this.getSampleMaterialVariantsSelect()}
         ${img}
         ${link}
       </webgltf-viewer-control-group>
@@ -63,6 +63,7 @@ class WebGLTFViewerControlModelElement extends WebGLTFParamElement {
   getSampleSelect() {
     const selectedSample = this.getSample().name;
     return html`
+      <label for="sample">Sample</label>
       <select id="sample" @change="${(e) => this.sample = e.target.value}">
         ${samples.map(({ name, disabled }) => {
           return html`<option ?disabled="${disabled}" ?selected="${selectedSample === name}" value="${name}">${name}</option>`;
@@ -77,12 +78,28 @@ class WebGLTFViewerControlModelElement extends WebGLTFParamElement {
     const selectedVariant = sample.variants[this.variant] ? this.variant : variants[0];
 
     return html`
+      <label for="variant">Variant</label>
       <select id="variant" @change="${(e) => this.variant = e.target.value }}">
-        ${variants.map( name => html`
+        ${variants.map(name => html`
           <option ?selected="${selectedVariant === name}" value="${name}">${name}</option>
         `)}
       </select>
     `;
+  }
+
+  getSampleMaterialVariantsSelect() {
+    const materialVariants = this.webgltf?.extensions?.KHR_materials_variants?.variants;
+    const selectedMaterial = materialVariants?.find(({ name }) => name === this.material)?.name || '';
+
+    return materialVariants ? html`
+      <label for="material">Material</label>
+      <select id="material" @change="${(e) => this.material = e.target.value }}">
+        <option ?selected="${selectedMaterial === ""}" value="">Default</option>
+        ${materialVariants.map(({ name }) => html`
+          <option ?selected="${selectedMaterial === name}" value="${name}">${name}</option>
+        `)}
+      </select>
+    ` : '';
   }
 
   async loadModel() {

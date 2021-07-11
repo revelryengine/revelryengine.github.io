@@ -1,6 +1,6 @@
 # Extension Support
 
-The WebGLTF renderer supports the following extensions:
+The WebGLTF library and renderer supports the following extensions:
 
 - [x] [Draco Mesh Compression](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_draco_mesh_compression)
 - [x] [Lights Punctual](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_lights_punctual)
@@ -11,10 +11,10 @@ The WebGLTF renderer supports the following extensions:
 - [x] [Materials Specular](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_specular)
 - [x] [Materials Transmission](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_transmission)
 - [x] [Materials Unlit](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_unlit)
-<!-- - [ ] [Materials Variants](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_variants) -->
+- [x] [Materials Variants](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_variants)
 - [x] [Materials Volume](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_volume)
-<!-- - [ ] [Mesh Quantization](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_mesh_quantization) -->
+- [x] [Mesh Quantization](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_mesh_quantization)
 - [x] [Texture Basis Universal Compression](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_texture_basisu)
 - [x] [Texture Transform](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_texture_transform)
-<!-- - [ ] [XMP](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_xmp) -->
-<!-- - [ ] [XMP JSON LD](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_xmp_json_ld) -->
+- [x] [XMP](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_xmp)
+- [x] [XMP JSON LD](https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_xmp_json_ld)

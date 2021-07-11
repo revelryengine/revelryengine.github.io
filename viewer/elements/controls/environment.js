@@ -1,7 +1,7 @@
 import { html, css } from 'https://cdn.skypack.dev/lit-element@2.4.0';
 import { WebGLTFParamElement } from './param.js';
 
-import { Environment } from 'https://cdn.jsdelivr.net/npm/webgltf@0.1.0/lib/renderer/environment.js';
+import { Environment } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/renderer/environment.js';
 import index from 'https://cdn.jsdelivr.net/gh/webgltf/webgltf-sample-models@main/environments/index.js';
 
 const environments = index.filter(({ res }) => res === 256);

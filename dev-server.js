@@ -13,7 +13,7 @@ app.use(async (ctx, next) => {
         <script type="importmap">
             {
                 "imports": {
-                    "https://cdn.jsdelivr.net/npm/webgltf@0.1.0/": "/webgltf/",
+                    "https://cdn.jsdelivr.net/npm/webgltf/": "/webgltf/",
                     "https://cdn.jsdelivr.net/gh/webgltf/webgltf-sample-models@main/": "/webgltf-sample-models/"
                 }
             }

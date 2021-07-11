@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'https://cdn.skypack.dev/lit-element@2.4.0';
 
-import { Renderer    } from 'https://cdn.jsdelivr.net/npm/webgltf@0.1.0/lib/renderer/renderer.js';
-import { Animator    } from 'https://cdn.jsdelivr.net/npm/webgltf@0.1.0/lib/renderer/animator.js';
+import { Renderer    } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/renderer/renderer.js';
+import { Animator    } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/renderer/animator.js';
 
 import './controls/controls.js';
 import './camera.js';

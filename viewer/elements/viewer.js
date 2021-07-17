@@ -20,6 +20,8 @@ class WebGLTFViewerElement extends LitElement {
 
       usePunctual: { type: Boolean },
       useIBL:      { type: Boolean },
+      useSSAO:     { type: Boolean },
+      debug:       { type: String  },
     }
   }
 
@@ -38,10 +40,12 @@ class WebGLTFViewerElement extends LitElement {
   controlChange() {
     this.loading = this.controls.loading;
     this.webgltf = this.controls.model.webgltf;
-    this.ibl     = this.controls.environment.environment;
+    this.ibl     = this.controls.lighting.environment;
 
-    this.usePunctual = !this.controls.environment.punctualoff;
-    this.useIBL      = !this.controls.environment.useIBL;
+    this.usePunctual = !this.controls.lighting.punctualoff;
+    this.useIBL      = !this.controls.lighting.ibloff;
+    this.useSSAO     = !this.controls.lighting.ssaooff;
+    this.debug       = this.controls.debug.debug;
 
     for(const variant of (this.webgltf?.extensions?.KHR_materials_variants?.variants || [])){
       if(variant.name === this.controls.model.material) {
@@ -72,13 +76,19 @@ class WebGLTFViewerElement extends LitElement {
   updated(changedProperties) {
     if(changedProperties.has('webgltf')) {
       this.animator = new Animator(this.webgltf.animations);
-      this.camera.resetToScene(this.webgltf.scenes[this.controls.scene.scene || 0]);
+      const scene = this.webgltf.scenes[this.controls.scene.scene || 0];
+      const camera = this.webgltf.nodes[this.controls.scene.camera] || this.camera.node;
+
+      this.camera.resetToScene(scene, camera, this.canvas);
       this.lastRenderTime = performance.now();      
     }
-    if(changedProperties.has('ibl') || changedProperties.has('usePunctual') || changedProperties.has('useIBL')) {
+    if(changedProperties.has('ibl') || changedProperties.has('usePunctual') || changedProperties.has('useIBL') || changedProperties.has('useSSAO') || changedProperties.has('debug')) {
       this.renderer.environment = this.ibl;
+
       this.renderer.usePunctual = this.usePunctual;
-      this.renderer.useIBL = this.useIBL;
+      this.renderer.useIBL  = this.useIBL;
+      this.renderer.useSSAO = this.useSSAO;
+      this.renderer.debug   = this.debug;
       this.renderer.clearProgramCache();
     }
   }

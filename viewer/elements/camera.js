@@ -1,7 +1,7 @@
 import { LitElement } from 'https://cdn.skypack.dev/lit-element@2.4.0';
 
-import { Camera, Node, glMatrix } from 'https://cdn.jsdelivr.net/npm/webgltf@0.1.0/lib/webgltf.js';
-import { Graph } from 'https://cdn.jsdelivr.net/npm/webgltf@0.1.0/lib/renderer/graph.js';
+import { Camera, Node, glMatrix } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/webgltf.js';
+import { Graph } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/renderer/graph.js';
 
 const { vec3, mat4, quat } = glMatrix;
 
@@ -277,8 +277,8 @@ export class ViewerCamera extends LitElement {
     return { min, max };
   }
 
-  resetToScene(scene) {
-    this.graph.analyze(scene);
+  resetToScene(scene, cameraNode, viewport) {
+    this.graph.analyze({ scene, cameraNode, viewport });
 
     const { min, max } = this.getSceneBounds(scene);
 

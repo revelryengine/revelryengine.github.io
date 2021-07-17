@@ -5,9 +5,10 @@ import '../fab.js';
 import './group.js';
 import './model.js';
 import './scene.js';
-import './environment.js';
+import './lighting.js';
+import './debug.js';
 
-const CONTROLS = ['model', 'scene', 'environment'];
+const CONTROLS = ['model', 'scene', 'lighting', 'debug'];
 
 class WebGLTFViewerControls extends LitElement {
   static get properties() {

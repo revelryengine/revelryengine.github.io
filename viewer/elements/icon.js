@@ -3,7 +3,8 @@ import { LitElement, html, css } from 'https://cdn.skypack.dev/lit-element@2.4.0
 class WebGLTFIcon extends LitElement {
   static get properties() {
     return {
-      name: { type: String, reflect: true }
+      name: { type: String, reflect: true },
+      type: { type: String, reflect: true },
     }
   }
 
@@ -11,13 +12,14 @@ class WebGLTFIcon extends LitElement {
     return css`
       :host {
         display: inline-block;
+      }
     `;
   }
 
   render(){
     return html`
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/css/all.min.css">
-      <i class="fas fa-${this.name}"></i>
+      <i class="${this.type || 'fas'} fa-${this.name}"></i>
     `;
   }
 }

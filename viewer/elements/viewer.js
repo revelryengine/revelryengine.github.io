@@ -1,27 +1,51 @@
-import { LitElement, html, css } from 'https://cdn.skypack.dev/lit-element@2.4.0';
+import { html, css           } from 'https://cdn.skypack.dev/lit-element@2.4.0';
+import { WebGLTFParamElement } from './param.js';
 
+import { WebGLTF     } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/webgltf.js';
 import { Renderer    } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/renderer/renderer.js';
 import { Animator    } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/renderer/animator.js';
+import { Environment } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/renderer/environment.js';
 
-import './controls/controls.js';
+import samplesIndex from 'https://cdn.jsdelivr.net/gh/webgltf/webgltf-sample-models@main/index.js';
+import envIndex     from 'https://cdn.jsdelivr.net/gh/webgltf/webgltf-sample-models@main/environments/index.js';
+
+import './controls.js';
 import './camera.js';
+import './toast.js';
 import './vr.js';
 
-class WebGLTFViewerElement extends LitElement {
+const samples      = samplesIndex;
+const environments = envIndex.filter(({ res }) => res === 256);
+
+class WebGLTFViewerElement extends WebGLTFParamElement {
   static get properties() {
     return {
       showcontrols: { type: Boolean, reflect: true },
-      loading:      { type: Boolean, reflect: true },
+
+      loading:       { type: Boolean, reflect: true },
+      loadingSample: { type: Boolean },
+      loadingEnv:    { type: Boolean },
+
       error:        { type: String,  reflect: true },
 
       webgltf: { type: Object },
-      scene:   { type: Object },
-      ibl:     { type: Object },
 
-      usePunctual: { type: Boolean },
-      useIBL:      { type: Boolean },
-      useSSAO:     { type: Boolean },
-      debug:       { type: String  },
+      usePunctual: { type: Boolean, param: true, default: true },
+      useIBL:      { type: Boolean, param: true, default: true },
+      useSSAO:     { type: Boolean, param: true, default: true },
+      useShadows:  { type: Boolean, param: true, default: true },
+      useDOF:      { type: Boolean, param: true, default: false },
+
+      sample:      { type: String, param: true, default: 'SciFiHelmet' },
+      variant:     { type: String, param: true, default: 'glTF' },
+      material:    { type: String, param: true },
+      environment: { type: String, param: true, default: 'Round Platform' },
+      tonemap:     { type: String, param: true, default: '' },
+
+      cameraId:    { type: Number, param: true, default: -1 },
+      sceneId:     { type: Number, param: true, default: -1 },
+
+      debug:       { type: String, param: true, default: 'DEBUG_NONE' },
     }
   }
 
@@ -31,37 +55,24 @@ class WebGLTFViewerElement extends LitElement {
     this.canvas   = document.createElement('canvas');
     this.camera   = document.createElement('webgltf-viewer-camera');
     this.controls = document.createElement('webgltf-viewer-controls');
+    this.toast    = document.createElement('webgltf-viewer-toast');
 
-    this.controls.addEventListener('control:updated', () => this.controlChange());
-    this.controls.addEventListener('control:changed', () => this.controlChange());
-    this.controls.addEventListener('control:error', () => this.controlChange());
-  }
+    this.camera.addEventListener('pointerdown', () => {
+      this.controls.closeMenu();
+    });
 
-  controlChange() {
-    this.loading = this.controls.loading;
-    this.webgltf = this.controls.model.webgltf;
-    this.ibl     = this.controls.lighting.environment;
-
-    this.usePunctual = !this.controls.lighting.punctualoff;
-    this.useIBL      = !this.controls.lighting.ibloff;
-    this.useSSAO     = !this.controls.lighting.ssaooff;
-    this.debug       = this.controls.debug.debug;
-
-    for(const variant of (this.webgltf?.extensions?.KHR_materials_variants?.variants || [])){
-      if(variant.name === this.controls.model.material) {
-        variant.activate(this.renderer.context);
-      } else {
-        variant.deactivate(this.renderer.context);
-      }
-    }
+    this.samples      = samples;
+    this.environments = environments;
   }
 
   async connectedCallback() {
     super.connectedCallback();
     try {
       this.renderer = new Renderer(this.canvas, { xrCompatible: true });
-      this.vrControl = document.createElement('webgltf-vr-control');
-      this.vrControl.viewer = this;
+      this.renderer.scaleFactor = 1 / window.devicePixelRatio;
+      this.camera.renderer = this.renderer;
+      // this.vrControl = document.createElement('webgltf-vr-control');
+      // this.vrControl.viewer = this;
       this.requestId = requestAnimationFrame(t => this.renderWebGLTF(t));
     } catch(e) {
       console.warn(e);
@@ -74,23 +85,53 @@ class WebGLTFViewerElement extends LitElement {
   }
 
   updated(changedProperties) {
+    super.updated(changedProperties);
+
     if(changedProperties.has('webgltf')) {
       this.animator = new Animator(this.webgltf.animations);
-      const scene = this.webgltf.scenes[this.controls.scene.scene || 0];
-      const camera = this.webgltf.nodes[this.controls.scene.camera] || this.camera.node;
+      const scene  = this.webgltf.scenes[0];
+      const camera = this.camera.node;
 
       this.camera.resetToScene(scene, camera, this.canvas);
       this.lastRenderTime = performance.now();      
     }
-    if(changedProperties.has('ibl') || changedProperties.has('usePunctual') || changedProperties.has('useIBL') || changedProperties.has('useSSAO') || changedProperties.has('debug')) {
-      this.renderer.environment = this.ibl;
 
-      this.renderer.usePunctual = this.usePunctual;
-      this.renderer.useIBL  = this.useIBL;
-      this.renderer.useSSAO = this.useSSAO;
-      this.renderer.debug   = this.debug;
-      this.renderer.clearProgramCache();
+    if(changedProperties.has('usePunctual')
+      || changedProperties.has('useIBL') 
+      || changedProperties.has('useSSAO') 
+      || changedProperties.has('useShadows')
+      || changedProperties.has('useDOF')
+      || changedProperties.has('tonemap')
+      || changedProperties.has('debug')) {
+      const { settings } = this.renderer;
+      settings.punctual.enabled = this.usePunctual;
+      settings.ibl.enabled      = this.useIBL;
+      settings.ssao.enabled     = this.useSSAO;
+      settings.shadows.enabled  = this.useShadows;
+      settings.dof.enabled      = this.useDOF;
+      settings.tonemap          = this.tonemap;
+      settings.debug            = this.debug;
+      this.renderer.reset();
     }
+
+    if(changedProperties.has('sample') || changedProperties.has('variant') ) {
+      
+      this.loadSample();
+    }
+
+    if(changedProperties.has('material')) {
+      this.activateMaterial();
+    }
+
+    if(changedProperties.has('environment')) {
+      this.loadEnvironment();
+    }
+
+    if(changedProperties.has('useDOF')) {
+      if(this.useDOF) this.toast.addMessage(html`Depth of Field enabled.<br>Click/Tap to set focus distance.`, 5000);
+    }
+
+    this.controls.update();
   }
 
   render(){
@@ -99,16 +140,14 @@ class WebGLTFViewerElement extends LitElement {
       return html`<p>Your browser does not support WebGL 2.0</p>`;
     }
 
-    this.loading = this.controls.loading;
-    this.error   = this.controls.error;
-
-    this.renderer.scaleFactor = this.loading ? 0.25 : 1;
+    this.loading = this.loadingSample || this.loadingEnv;
     
     return html`
       ${this.camera}
       ${this.canvas}
       ${this.vrControl}
       ${this.showcontrols ? this.controls : ''}
+      ${this.toast}
       <div class="loader"><webgltf-icon name="spinner"></webgltf-icon> Loading</div>
       <div class="error ${this.error ? 'show': 'hide'}">
         <webgltf-icon name="exclamation-circle"></webgltf-icon> Failed to load model
@@ -122,15 +161,59 @@ class WebGLTFViewerElement extends LitElement {
     this.requestId = requestAnimationFrame(t => this.renderWebGLTF(t));
 
     if (this.webgltf) {
-      this.camera.update();
+      this.camera.updateInput(hrTime);
       this.animator.update(hrTime - this.lastRenderTime);
 
-      const scene = this.webgltf.scenes[this.controls.scene.scene || 0];
-      const camera = this.webgltf.nodes[this.controls.scene.camera] || this.camera.node;
+      const scene = this.webgltf.scenes[0];
+      const camera = this.webgltf.nodes[this.cameraId]?.camera ? this.webgltf.nodes[this.cameraId] : this.camera.node;
 
-      this.renderer.render(scene, camera);
+      
+      if(!this.vrControl?.xrSession) this.renderer.render(scene, camera);
     }
     this.lastRenderTime = hrTime;
+  }
+
+  async loadSample() {
+    this.loadingSample = true;
+    this.error = false;
+
+    const sample = this.samples.find(({ name }) => name === this.sample);
+    const source = sample.variants[this.variant] ? sample.variants[this.variant] : sample.variants[Object.keys(sample.variants)[0]];
+
+    try {
+      if(this.abortController) this.abortController.abort();
+      this.abortController = new AbortController();
+
+      this.webgltf = await WebGLTF.load(source, this.abortController);
+
+      this.loadingSample = false;
+      this.toast.addMessage(html`Drag to Rotate<br>Scroll/Pinch to Zoom`, 3000);
+      console.log('Sample:', this.webgltf);
+    } catch(e) {
+      if(e.name !== 'AbortError') {
+        this.error = e.message;
+        console.trace(e);
+      }
+    }
+  }
+
+  async loadEnvironment() {
+    this.loadingEnv = true;
+    const gltf = environments.find(({ name }) => name === this.environment)?.gltf;
+    this.renderer.environment = gltf ? await Environment.load(gltf) : null;
+    console.log('Environment:', this.renderer.environment);
+    this.renderer.reset();
+    this.loadingEnv = false;
+  }
+
+  activateMaterial() {
+    for(const variant of (this.webgltf?.extensions?.KHR_materials_variants?.variants || [])){
+      if(variant.name === this.material) {
+        variant.activate(this.renderer.context);
+      } else {
+        variant.deactivate(this.renderer.context);
+      }
+    }
   }
 
   static get styles() {
@@ -138,7 +221,7 @@ class WebGLTFViewerElement extends LitElement {
       :host {
         display: flex;
         position: relative;
-        background-color: var(--primary-light);
+        background: radial-gradient(var(--primary-dark), var(--primary-light));
         width: 100%;
         height: 100%;
         align-items: center;
@@ -146,7 +229,7 @@ class WebGLTFViewerElement extends LitElement {
       }
 
       :host([loading]) canvas {
-        filter: blur(4px);
+        filter: blur(12px);
       }
 
       :host([loading]) .loader {
@@ -170,7 +253,7 @@ class WebGLTFViewerElement extends LitElement {
         top: 50%;
         transform: translate(-50%, -50%);
         font-size: var(--font-size-l);
-        background-color: var(--primary);
+        background-color: rgba(0,0,0, 0.75);
         padding: 15px;
         border-radius: 5px;
         z-index: 3;
@@ -200,21 +283,19 @@ class WebGLTFViewerElement extends LitElement {
         bottom: 0;
         touch-action: none;
         line-height: 24px;
+        cursor: grab;
       }
 
       webgltf-viewer-controls {
-        z-index: 100;
-        position: absolute;
-        right: 0;
-        bottom: 0;
-        max-height: 100%;
+        z-index: 2;
       }
 
-      webgltf-vr-control {
-        z-index: 12; /* the docisfy sidebar button is 11 */
+      webgltf-viewer-toast {
+        z-index: 4;
         position: absolute;
-        bottom: 0;
         left: 0;
+        right: 0;
+        bottom: 20vh;
       }
     `;
   }

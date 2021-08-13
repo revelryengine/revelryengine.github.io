@@ -27,15 +27,15 @@ class WebGLTFVRControl extends LitElement {
       this.xrSession  = await navigator.xr.requestSession('immersive-vr');
       this.xrSession.onend = () => {
         delete this.xrSession;
-        this.viewer.renderer.context.canvas.width = 0;
         this.viewer.renderer.scaleFactor = 1;
         this.requestUpdate();
       };
 
-      this.xrSession.updateRenderState({ baseLayer: new XRWebGLLayer(this.xrSession, this.viewer.renderer.context) });
-      this.xrRefSpace = await this.xrSession.requestReferenceSpace('local');
+      this.xrSession.updateRenderState({ baseLayer: new XRWebGLLayer(this.xrSession, this.viewer.renderer.context, { antialias: false }) });
+      this.xrRefSpace  = await this.xrSession.requestReferenceSpace('local');
       this.xrRequestId = this.xrSession.requestAnimationFrame((hrTime, xrFrame) => this.renderWebGLTFXR(hrTime, xrFrame));
       this.viewer.renderer.scaleFactor = 0.5;
+      this.lastRenderTime = performance.now();   
     } else {
       this.xrSession.end();
     }
@@ -45,26 +45,28 @@ class WebGLTFVRControl extends LitElement {
   renderWebGLTFXR(hrTime, xrFrame) {
     this.xrRequestId = this.xrSession.requestAnimationFrame((hrTime, xrFrame) => this.renderWebGLTFXR(hrTime, xrFrame));
 
-    if(this.viewer && this.viewer.webgltf) {
-      for (let source of this.xrSession.inputSources) {
-        if (source.gamepad) {
-          const [trigger, squeeze] = source.gamepad.buttons;
-          const [thumbX, thumbY] = source.gamepad.axes;
+    for (let source of this.xrSession.inputSources) {
+      if (source.gamepad) {
+        const [trigger, squeeze] = source.gamepad.buttons;
+        const [thumbX, thumbY] = source.gamepad.axes;
 
-          if(trigger.pressed) {
-            if(Math.abs(thumbX) > 0.01) this.viewer.camera.input.pan[0] += thumbX * 0.025;
-            if(Math.abs(thumbY) > 0.01) this.viewer.camera.input.pan[1] += thumbY * 0.025;
-          } if(squeeze.pressed) {
-            if(Math.abs(thumbY) > 0.01) this.viewer.camera.zoom += thumbY * 0.025;
-          } else {
-            if(Math.abs(thumbX) > 0.01) this.viewer.camera.input.roll += thumbX * this.viewer.camera.speed.rotate * 0.025;
-            if(Math.abs(thumbY) > 0.01) this.viewer.camera.input.pitch += thumbY * this.viewer.camera.speed.rotate * 0.025;
-          }
+        if(trigger.pressed) {
+          if(Math.abs(thumbX) > 0.01) this.viewer.camera.input.pan[0] += thumbX * 0.025;
+          if(Math.abs(thumbY) > 0.01) this.viewer.camera.input.pan[1] += thumbY * 0.025;
+        } if(squeeze.pressed) {
+          if(Math.abs(thumbY) > 0.01) this.viewer.camera.zoom += thumbY * 0.025;
+        } else {
+          if(Math.abs(thumbX) > 0.01) this.viewer.camera.input.roll += thumbX * this.viewer.camera.speed.rotate * 0.025;
+          if(Math.abs(thumbY) > 0.01) this.viewer.camera.input.pitch += thumbY * this.viewer.camera.speed.rotate * 0.025;
         }
       }
-      const scene = this.viewer.webgltf.scenes[this.viewer.controls.scene.scene || 0];
-      this.viewer.renderer.renderXR(scene, this.xrRefSpace.getOffsetReferenceSpace(this.viewer.camera.getRigidTransform()), xrFrame)
     }
+    const scene = this.viewer.webgltf.scenes[this.viewer.controls.scene.scene || 0];
+
+    this.viewer.animator.update(hrTime - this.lastRenderTime);
+    this.viewer.renderer.renderXR(scene, this.xrRefSpace.getOffsetReferenceSpace(this.viewer.camera.getRigidTransform()), xrFrame)
+
+    this.lastRenderTime = hrTime;
   }
 
   static get styles() {

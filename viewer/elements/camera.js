@@ -1,4 +1,4 @@
-import { LitElement } from 'https://cdn.skypack.dev/lit-element@2.4.0';
+import { LitElement, html, css } from 'https://cdn.skypack.dev/lit-element@2.4.0';
 
 import { Camera, Node, glMatrix } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/webgltf.js';
 import { Graph } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/renderer/graph.js';
@@ -13,7 +13,7 @@ const EPSILON = 2 ** -23;
 const PHI_BOUNDS = [0, Math.PI];
 const THETA_BOUNDS = [-Infinity, Infinity];
 const DISTANCE_BOUNDS = [2 ** -13, Infinity];
-const ZOOM_BOUNDS = [-5, 0.99];
+const ZOOM_BOUNDS = [-3, 0.99];
 const DAMPING = 0.75;
 const DEFAULT_POSITION = vec3.fromValues(-3, 3, 6);
 
@@ -27,10 +27,70 @@ function clamp(num, min, max) {
   return num;
 }
 
+function lerp(a, b, t) {
+    return a + (b - a) * t;
+}
+
+class FocusRing extends LitElement {
+  static get properties() {
+    return {
+      active: { type: Boolean, reflect: true },
+      x:      { type: Number  },
+      y:      { type: Number  },
+    }
+  }
+  static get styles() {
+    return css`
+        :host {
+          position: absolute;
+          width: 50px;
+          height: 50px;
+          border: 3px solid rgba(255, 255, 255, 0.75);
+          border-radius: 50%;
+          display: none;
+        }
+
+        :host([active]) {
+          display: inline-block;
+          animation: pulse 0.5s 1;
+        }
+
+        @keyframes pulse {
+          0% {
+            border-color: rgba(255, 255, 255, 0.75);
+          }
+          100% {
+            border-color: rgba(255, 255, 255, 0.25);
+          }
+        }
+
+        /* :host(:not([active])){
+          display: none;
+        } */
+    `;
+  }
+
+  constructor(){
+    super();
+
+    this.addEventListener('animationend', () => {
+      this.active = false;
+    });
+  }
+
+  updated() {
+    this.style.left = `${this.x - 25}px`;
+    this.style.top  = `${this.y - 25}px`;
+  }
+}
+
+customElements.define('webgltf-viewer-camera-focus-ring', FocusRing);
+
 export class ViewerCamera extends LitElement {
   constructor() {
     super();
 
+    this.focusRing = document.createElement('webgltf-viewer-camera-focus-ring');
     this.node = new Node({
       matrix: mat4.create(),
       camera: new Camera({
@@ -42,7 +102,7 @@ export class ViewerCamera extends LitElement {
       }),
     });
 
-    this.speed = { rotate: 1, zoom: 1, pan: 1 };
+    this.speed = { rotate: 1, zoom: 1, pan: 1, focus: 100 };
     this.zoom = 0;
 
     this.position = vec3.clone(DEFAULT_POSITION);
@@ -50,7 +110,7 @@ export class ViewerCamera extends LitElement {
     this.distance = vec3.length(vec3.subtract(tmpV, this.position, this.target));
     this.idealDistance = 1;
 
-    this.input = { roll: 0, pitch: 0, zoom: 0, pan: [0, 0] };
+    this.input = { roll: 0, pitch: 0, zoom: 0, pan: [0, 0], dof: { start: 0, end: 0, time: 0 } };
 
     const ptrCache = [];
     let prevDiff = -1;
@@ -63,6 +123,7 @@ export class ViewerCamera extends LitElement {
     const downEvent = (e) => {
       ptrCache.push(e);
       e.preventDefault();
+      this.focus(e.offsetX, e.offsetY);
     }
 
     const moveEvent = (e) => {
@@ -108,6 +169,7 @@ export class ViewerCamera extends LitElement {
           break;
       }
       this.input.zoom -= delta * (this.speed.zoom * ZOOM_K) ;
+      this.focusCenter();
     }
 
     this.addEventListener('wheel', zoomEvent, { passive: true });
@@ -122,7 +184,7 @@ export class ViewerCamera extends LitElement {
     this.graph = new Graph();
   }
 
-  update() {
+  updateInput(hrTime) {   
     const { position, target, input, node, idealDistance } = this;
     const { matrix } = node;
     let { distance, zoom } = this;
@@ -159,7 +221,6 @@ export class ViewerCamera extends LitElement {
     zoom += input.zoom;
     zoom = clamp(zoom, ZOOM_BOUNDS[0], ZOOM_BOUNDS[1]);
 
-
     distance = idealDistance - (idealDistance * zoom);
     distance = clamp(distance, DISTANCE_BOUNDS[0], DISTANCE_BOUNDS[1]);
 
@@ -173,8 +234,7 @@ export class ViewerCamera extends LitElement {
 
     vec3.add(position, target, offset);
 
-    mat4.lookAt(this.node.matrix, position, target, UP);
-    mat4.invert(this.node.matrix, this.node.matrix);
+    mat4.targetTo(this.node.matrix, position, target, UP);
 
     input.roll *= DAMPING;
     input.pitch *= DAMPING;
@@ -184,6 +244,21 @@ export class ViewerCamera extends LitElement {
 
     this.position = position;
     this.target = target;
+
+    /** DOF parameter adjustment */
+    if(this.renderer.settings.dof.enabled){
+      if(this.input.dof.time) {
+        const t = (hrTime - this.input.dof.time) / this.speed.focus;
+        this.renderer.settings.dof.distance = lerp(this.input.dof.start, this.input.dof.end, t);
+        if(t > 1) {
+          this.input.dof.time = 0;
+        }
+      }
+      if(input.roll + input.pitch + input.zoom + input.pan[0] + input.pan[1] === 0) {
+        // this.focusCenter();
+      }
+    }
+    // console.log(this.renderer.settings.dof.range);
   }
 
   getPrimitiveBounds(accessor, nodeTransform) {
@@ -288,10 +363,12 @@ export class ViewerCamera extends LitElement {
 
     const height = max[1] - this.target[1];
 
-    this.idealDistance = height / Math.tan(this.node.camera[this.node.camera.type].yfov / 2);
+    const yfov = 2 * Math.atan(1/this.graph.viewInfo.projectionMatrix[5]); //This only works with a symmetical perspective matrix
+
+    this.idealDistance = height / Math.tan(yfov / 2);
 
     this.node.camera[this.node.camera.type].znear = this.idealDistance / 100;
-    this.node.camera[this.node.camera.type].zfar = this.idealDistance * 100;
+    this.node.camera[this.node.camera.type].zfar = this.idealDistance * 10;
 
     this.position[0] = this.target[0];
     this.position[1] = this.target[1];
@@ -299,11 +376,10 @@ export class ViewerCamera extends LitElement {
 
     this.zoom = 0;
 
-    this.update();
+    setTimeout(() => this.focusCenter(), 100);
   }
 
   getRigidTransform() {
-
     const inverse = mat4.create();
     const translation = vec3.create();
     const orientation = quat.create();
@@ -315,6 +391,25 @@ export class ViewerCamera extends LitElement {
     return new XRRigidTransform(
       { x: translation[0], y: translation[1], z: translation[2] },
       { x: orientation[0], y: orientation[1], z: orientation[2], w: orientation[3] });
+  }
+
+  focus(x, y) {
+    if(this.renderer.settings.dof.enabled){
+      this.focusRing.x = x;
+      this.focusRing.y = y;
+      this.focusRing.active = true;
+      this.input.dof.start = this.renderer.settings.dof.distance;
+      this.input.dof.end   = this.renderer.getDistanceAtPoint(x, this.offsetHeight - y);
+      this.input.dof.time  = performance.now();
+    }
+  }
+
+  focusCenter() {
+    this.focus(this.offsetWidth / 2, this.offsetHeight / 2);
+  }
+
+  render() {
+    return html`${this.focusRing}`;
   }
 }
 

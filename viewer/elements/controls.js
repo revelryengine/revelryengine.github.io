@@ -269,8 +269,34 @@ class WebGLTFViewerControls extends LitElement {
 
       case 'settings': {
         content = html`
-          ${this.getSubMenuItem('settings>dof', 'Depth of Field', this.viewer.useDOF ? 'On': 'Off')}
+          ${this.getSubMenuItem('settings>grid',  'Reference Grid', this.viewer.useGrid ? 'On': 'Off')}
+          ${this.getSubMenuItem('settings>fog',   'Fog', this.viewer.useFog ? 'On': 'Off')}
+          ${this.getSubMenuItem('settings>dof',   'Depth of Field', this.viewer.useDOF ? 'On': 'Off')}
           ${this.getSubMenuItem('settings>debug', 'Debug', this.getDebugModes().find(({ define }) => this.viewer.debug === define)?.name || 'None')}
+        `;
+        break;
+      }
+      case 'settings>grid': {
+        const haze = this.viewer.renderer.settings.haze;
+        content = html`
+          ${this.getBackMenuItem('Reference Grid')}
+          <div class="list">
+            ${this.getCheckMenuItem('On', this.viewer.useGrid, () => this.viewer.useGrid = true )}
+            ${this.getCheckMenuItem('Off', !this.viewer.useGrid, () => this.viewer.useGrid = false )}
+          </div>
+        `;
+        break;
+      }
+      case 'settings>fog': {
+        const fog = this.viewer.renderer.settings.fog;
+        content = html`
+          ${this.getBackMenuItem('Fog')}
+          <div class="list">
+            ${this.getCheckMenuItem('On', this.viewer.useFog, () => this.viewer.useFog = true )}
+            ${this.getCheckMenuItem('Off', !this.viewer.useFog, () => this.viewer.useFog = false )}
+          </div>
+          ${this.getSliderMenuItem('Min', 1, 0, 50, fog.range[0], (e) => fog.range[0] = parseFloat(e.target.value))}
+          ${this.getSliderMenuItem('Max', 5, 50, 500, fog.range[1], (e) => fog.range[1] = parseFloat(e.target.value))}
         `;
         break;
       }
@@ -289,10 +315,22 @@ class WebGLTFViewerControls extends LitElement {
       case 'settings>debug': {
         content = html`
           ${this.getBackMenuItem('Debug')}
+          ${this.getSubMenuItem('settings>debug>aabb', 'Bounding Boxes', this.viewer.useAABB ? 'On': 'Off')}
           <div class="list">
             ${this.getDebugModes().map(({ name, define }) => {
               return this.getCheckMenuItem(name, this.viewer.debug === define, () => this.viewer.debug = define )
             })}
+          </div>
+        `;
+        break;
+      }
+
+      case 'settings>debug>aabb': {
+        content = html`
+          ${this.getBackMenuItem('Bounding Boxes')}
+          <div class="list">
+            ${this.getCheckMenuItem('On', this.viewer.useAABB, () => this.viewer.useAABB = true )}
+            ${this.getCheckMenuItem('Off', !this.viewer.useAABB, () => this.viewer.useAABB = false )}
           </div>
         `;
         break;

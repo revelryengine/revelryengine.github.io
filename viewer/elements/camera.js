@@ -1,9 +1,8 @@
 import { LitElement, html, css } from 'https://cdn.skypack.dev/lit-element@2.4.0';
 
-import { Camera, Node, glMatrix } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/webgltf.js';
-import { Graph } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/renderer/graph.js';
-
-const { vec3, mat4, quat } = glMatrix;
+import { Camera, Node     } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/webgltf.js';
+import { Frustum          } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/utils/frustum.js';
+import { vec3, mat4, quat } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/utils/gl-matrix.js';
 
 const tmpV = vec3.create();
 
@@ -181,7 +180,7 @@ export class ViewerCamera extends LitElement {
     // disable pull to refresh in FF for Android
     this.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
 
-    this.graph = new Graph();
+    this.frustum = new Frustum();
   }
 
   updateInput(hrTime) {   
@@ -261,109 +260,22 @@ export class ViewerCamera extends LitElement {
     // console.log(this.renderer.settings.dof.range);
   }
 
-  getPrimitiveBounds(accessor, nodeTransform) {
-    const min = vec3.create();
-    const max = vec3.create();
+  resetToScene(scene, viewport) {
+    const { graph } = scene;
 
-    for(const i of [0, 1, 2]){
-      min[i] = Infinity;
-      max[i] = -Infinity;
-    }
+    graph.updateNode(this.node);
 
-    const boxMin = vec3.create();
-    vec3.transformMat4(boxMin, accessor.min, nodeTransform);
+    this.frustum.update({ graph, cameraNode: this.node, viewport })
 
-    const boxMax = vec3.create();
-    vec3.transformMat4(boxMax, accessor.max, nodeTransform);
+    const { min, max } = graph.getSceneAABB();
 
-    const center = vec3.create();
-    vec3.add(center, boxMax, boxMin);
-    vec3.scale(center, center, 0.5);
-
-    const centerToSurface = vec3.create();
-    vec3.sub(centerToSurface, boxMax, center);
-
-    const radius = vec3.length(centerToSurface);
-
-    for (const i of [0, 1, 2]) {
-        min[i] = center[i] - radius;
-        max[i] = center[i] + radius;
-    }
-
-    return { min, max }
-  }
-
-  getNodeBounds(node) {
-    const nodeTransform = this.graph.getWorldTransform(node);
-
-    const min = vec3.create();
-    const max = vec3.create();
-
-    for(const i of [0, 1, 2]){
-      min[i] = Infinity;
-      max[i] = -Infinity;
-    }
-
-    if(node.mesh && node.mesh.primitives) {
-      for(const primitive of node.mesh.primitives) {
-        if(primitive.attributes.POSITION) {
-          const { min: pMin, max: pMax } = this.getPrimitiveBounds(primitive.attributes.POSITION, nodeTransform);
-
-          for (const i of [0, 1, 2]) {
-            min[i] = Math.min(min[i], pMin[i]);
-            max[i] = Math.max(max[i], pMax[i]);
-          }
-        }
-      }
-    }
-
-    if(node.children) {
-      for(const child of node.children){
-        const { min: nMin, max: nMax } = this.getNodeBounds(child);
-        for (const i of [0, 1, 2]) {
-          min[i] = Math.min(min[i], nMin[i]);
-          max[i] = Math.max(max[i], nMax[i]);
-        }
-      }
-    }
-
-    return { min, max };
-  }
-
-  getSceneBounds(scene) {
-    const min = vec3.create();
-    const max = vec3.create();
-
-    for(const i of [0, 1, 2]){
-      min[i] = Infinity;
-      max[i] = -Infinity;
-    }
-
-    for(const node of scene.nodes) {
-      if(!node.camera) {
-        const { min: nMin, max: nMax } = this.getNodeBounds(node);
-        for (const i of [0, 1, 2]) {
-          min[i] = Math.min(min[i], nMin[i]);
-          max[i] = Math.max(max[i], nMax[i]);
-        }
-      }
-    }
-
-    return { min, max };
-  }
-
-  resetToScene(scene, cameraNode, viewport) {
-    this.graph.analyze({ scene, cameraNode, viewport });
-
-    const { min, max } = this.getSceneBounds(scene);
-
-    for (const i of [0, 1, 2]) {
+    for (let i = 0; i < 3; i++) {
       this.target[i] = (max[i] + min[i]) / 2;
     }
 
-    const height = max[1] - this.target[1];
+    const height = (max[1] - this.target[1]) * 2;
 
-    const yfov = 2 * Math.atan(1/this.graph.viewInfo.projectionMatrix[5]); //This only works with a symmetical perspective matrix
+    const yfov = 2 * Math.atan(1/this.frustum.projectionMatrix[5]); //This only works with a symmetical perspective matrix
 
     this.idealDistance = height / Math.tan(yfov / 2);
 

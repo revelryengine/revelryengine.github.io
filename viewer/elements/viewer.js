@@ -34,7 +34,10 @@ class WebGLTFViewerElement extends WebGLTFParamElement {
       useIBL:      { type: Boolean, param: true, default: true },
       useSSAO:     { type: Boolean, param: true, default: true },
       useShadows:  { type: Boolean, param: true, default: true },
+      useGrid:     { type: Boolean, param: true, default: false },
+      useFog:      { type: Boolean, param: true, default: false },
       useDOF:      { type: Boolean, param: true, default: false },
+      useAABB:     { type: Boolean, param: true, default: false },
 
       sample:      { type: String, param: true, default: 'SciFiHelmet' },
       variant:     { type: String, param: true, default: 'glTF' },
@@ -87,12 +90,16 @@ class WebGLTFViewerElement extends WebGLTFParamElement {
   updated(changedProperties) {
     super.updated(changedProperties);
 
+    const { settings } = this.renderer;
+
     if(changedProperties.has('webgltf')) {
       this.animator = new Animator(this.webgltf.animations);
-      const scene  = this.webgltf.scenes[0];
-      const camera = this.camera.node;
+      const scene  = this.webgltf.scene || this.webgltf.scenes[0];
 
-      this.camera.resetToScene(scene, camera, this.canvas);
+      scene.graph.update();
+
+      this.camera.resetToScene(scene, this.canvas);
+
       this.lastRenderTime = performance.now();      
     }
 
@@ -100,14 +107,17 @@ class WebGLTFViewerElement extends WebGLTFParamElement {
       || changedProperties.has('useIBL') 
       || changedProperties.has('useSSAO') 
       || changedProperties.has('useShadows')
+      || changedProperties.has('useGrid')
+      || changedProperties.has('useFog')
       || changedProperties.has('useDOF')
       || changedProperties.has('tonemap')
       || changedProperties.has('debug')) {
-      const { settings } = this.renderer;
       settings.punctual.enabled = this.usePunctual;
       settings.ibl.enabled      = this.useIBL;
       settings.ssao.enabled     = this.useSSAO;
       settings.shadows.enabled  = this.useShadows;
+      settings.grid.enabled     = this.useGrid;
+      settings.fog.enabled      = this.useFog;
       settings.dof.enabled      = this.useDOF;
       settings.tonemap          = this.tonemap;
       settings.debug            = this.debug;
@@ -124,11 +134,19 @@ class WebGLTFViewerElement extends WebGLTFParamElement {
     }
 
     if(changedProperties.has('environment')) {
-      this.loadEnvironment();
+      if(this.useIBL) this.loadEnvironment();
+    }
+
+    if(changedProperties.has('useIBL')) {
+      if(this.useIBL && !this.renderer.environment) this.loadEnvironment();
     }
 
     if(changedProperties.has('useDOF')) {
       if(this.useDOF) this.toast.addMessage(html`Depth of Field enabled.<br>Click/Tap to set focus distance.`, 5000);
+    }
+
+    if(changedProperties.has('useAABB')) {
+      settings.aabb.enabled = this.useAABB;
     }
 
     this.controls.update();
@@ -162,12 +180,11 @@ class WebGLTFViewerElement extends WebGLTFParamElement {
 
     if (this.webgltf) {
       this.camera.updateInput(hrTime);
-      this.animator.update(hrTime - this.lastRenderTime);
-
+      
       const scene = this.webgltf.scenes[0];
       const camera = this.webgltf.nodes[this.cameraId]?.camera ? this.webgltf.nodes[this.cameraId] : this.camera.node;
 
-      
+      this.animator.update(hrTime - this.lastRenderTime, scene);
       if(!this.vrControl?.xrSession) this.renderer.render(scene, camera);
     }
     this.lastRenderTime = hrTime;
@@ -185,7 +202,6 @@ class WebGLTFViewerElement extends WebGLTFParamElement {
       this.abortController = new AbortController();
 
       this.webgltf = await WebGLTF.load(source, this.abortController);
-
       this.loadingSample = false;
       this.toast.addMessage(html`Drag to Rotate<br>Scroll/Pinch to Zoom`, 3000);
       console.log('Sample:', this.webgltf);
@@ -201,9 +217,10 @@ class WebGLTFViewerElement extends WebGLTFParamElement {
     this.loadingEnv = true;
     const gltf = environments.find(({ name }) => name === this.environment)?.gltf;
     this.renderer.environment = gltf ? await Environment.load(gltf) : null;
-    console.log('Environment:', this.renderer.environment);
     this.renderer.reset();
     this.loadingEnv = false;
+
+    console.log('Environment:', this.renderer.environment);
   }
 
   activateMaterial() {
@@ -283,7 +300,6 @@ class WebGLTFViewerElement extends WebGLTFParamElement {
         bottom: 0;
         touch-action: none;
         line-height: 24px;
-        cursor: grab;
       }
 
       webgltf-viewer-controls {

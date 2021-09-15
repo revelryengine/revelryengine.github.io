@@ -1,9 +1,11 @@
 import serve from 'koa-static-server';
 import Koa   from 'koa';
+import cors  from '@koa/cors';
 import fs    from 'fs/promises';
 
 const app = new Koa();
 
+app.use(cors());
 app.use(async (ctx, next) => {
   await next();
   if(ctx.path === '/') {

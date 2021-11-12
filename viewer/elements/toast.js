@@ -1,5 +1,5 @@
-import { LitElement, html, css } from 'https://cdn.skypack.dev/lit-element@2.4.0';
-import { repeat } from 'https://cdn.skypack.dev/lit-html@1.4.1/directives/repeat.js';
+import { LitElement, html, css } from 'https://cdn.skypack.dev/lit@2.0.2';
+import { repeat } from 'https://cdn.skypack.dev/lit@2.0.2/directives/repeat.js';
 
 export class WebGLTFViewerToast extends LitElement {
 

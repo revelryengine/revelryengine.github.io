@@ -1,4 +1,4 @@
-import { LitElement, html, css } from 'https://cdn.skypack.dev/lit-element@2.4.0';
+import { LitElement, html, css } from 'https://cdn.skypack.dev/lit@2.0.2';
 
 import './icon.js';
 import './fab.js';

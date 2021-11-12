@@ -1,4 +1,4 @@
-import { html, css           } from 'https://cdn.skypack.dev/lit-element@2.4.0';
+import { html, css           } from 'https://cdn.skypack.dev/lit@2.0.2';
 import { WebGLTFParamElement } from './param.js';
 
 import { WebGLTF     } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/webgltf.js';
@@ -32,6 +32,7 @@ class WebGLTFViewerElement extends WebGLTFParamElement {
 
       usePunctual: { type: Boolean, param: true, default: true },
       useIBL:      { type: Boolean, param: true, default: true },
+      useBloom:    { type: Boolean, param: true, default: true },
       useSSAO:     { type: Boolean, param: true, default: true },
       useShadows:  { type: Boolean, param: true, default: true },
       useGrid:     { type: Boolean, param: true, default: false },
@@ -64,6 +65,20 @@ class WebGLTFViewerElement extends WebGLTFParamElement {
       this.controls.closeMenu();
     });
 
+    window.addEventListener('keydown', (e) => {
+      if(e.key === 'PageDown') {
+        const index = this.samples.findIndex(({ name }) => name === this.sample);
+        const next  = this.samples[(index + 1) % this.samples.length];
+        this.sample = next.name;
+        e.preventDefault();
+      } else if(e.key === 'PageUp') {
+        const index = this.samples.findIndex(({ name }) => name === this.sample);
+        const prev  = this.samples[index < 1 ? this.samples.length - 1 : index - 1];
+        this.sample = prev.name;
+        e.preventDefault();
+      }
+    })
+
     this.samples      = samples;
     this.environments = environments;
   }
@@ -95,16 +110,17 @@ class WebGLTFViewerElement extends WebGLTFParamElement {
     if(changedProperties.has('webgltf')) {
       this.animator = new Animator(this.webgltf.animations);
       const scene  = this.webgltf.scene || this.webgltf.scenes[0];
-
+      
       scene.graph.update();
-
-      this.camera.resetToScene(scene, this.canvas);
+      
+      this.camera.resetToScene(scene, this.renderer.frustum);
 
       this.lastRenderTime = performance.now();      
     }
 
     if(changedProperties.has('usePunctual')
       || changedProperties.has('useIBL') 
+      || changedProperties.has('useBloom') 
       || changedProperties.has('useSSAO') 
       || changedProperties.has('useShadows')
       || changedProperties.has('useGrid')
@@ -114,6 +130,7 @@ class WebGLTFViewerElement extends WebGLTFParamElement {
       || changedProperties.has('debug')) {
       settings.punctual.enabled = this.usePunctual;
       settings.ibl.enabled      = this.useIBL;
+      settings.bloom.enabled    = this.useBloom;
       settings.ssao.enabled     = this.useSSAO;
       settings.shadows.enabled  = this.useShadows;
       settings.grid.enabled     = this.useGrid;
@@ -133,7 +150,7 @@ class WebGLTFViewerElement extends WebGLTFParamElement {
       this.activateMaterial();
     }
 
-    if(changedProperties.has('environment')) {
+    if(changedProperties.has('environment') && !changedProperties.has('useIBL')) {
       if(this.useIBL) this.loadEnvironment();
     }
 
@@ -181,7 +198,7 @@ class WebGLTFViewerElement extends WebGLTFParamElement {
     if (this.webgltf) {
       this.camera.updateInput(hrTime);
       
-      const scene = this.webgltf.scenes[0];
+      const scene  = this.webgltf.scenes[0];
       const camera = this.webgltf.nodes[this.cameraId]?.camera ? this.webgltf.nodes[this.cameraId] : this.camera.node;
 
       this.animator.update(hrTime - this.lastRenderTime, scene);
@@ -274,6 +291,7 @@ class WebGLTFViewerElement extends WebGLTFParamElement {
         padding: 15px;
         border-radius: 5px;
         z-index: 3;
+        user-select: none;
       }
 
       .loader webgltf-icon {

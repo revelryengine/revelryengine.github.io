@@ -1,6 +1,6 @@
-import { LitElement, html, css } from 'https://cdn.skypack.dev/lit-element@2.4.0';
+import { LitElement, html, css } from 'https://cdn.skypack.dev/lit@2.0.2';
 
-import { DEBUG_DEFINES } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/renderer/programs/gltf-program.js';
+import { DEBUG_DEFINES } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/renderer/programs/gltf/gltf-program.js';
 
 class WebGLTFViewerControls extends LitElement {
   static get properties() {
@@ -192,6 +192,7 @@ class WebGLTFViewerControls extends LitElement {
         content = html`
           ${this.getSubMenuItem('lighting>punctual', 'Punctual Lighting',              this.viewer.usePunctual ? 'On': 'Off')}
           ${this.getSubMenuItem('lighting>ibl',      'Image Based Lighting',           this.viewer.useIBL      ? 'On': 'Off')}
+          ${this.getSubMenuItem('lighting>bloom',    'Bloom',                          this.viewer.useBloom    ? 'On': 'Off')}
           ${this.getSubMenuItem('lighting>ssao',     'Screen Space Ambient Occlusion', this.viewer.useSSAO     ? 'On': 'Off')}
           ${this.getSubMenuItem('lighting>shadows',  'Shadows',                        this.viewer.useShadows  ? 'On': 'Off')}
           ${this.getSubMenuItem('lighting>tonemap',  'Tonemap',                        this.viewer.tonemap)}
@@ -227,6 +228,16 @@ class WebGLTFViewerControls extends LitElement {
               const checked = this.viewer.environment === name;
               return this.getCheckMenuItem(name, checked, () => this.viewer.environment = name);
             })}
+          </div>
+        `;
+        break;
+      }
+      case 'lighting>bloom': {
+        content = html`
+          ${this.getBackMenuItem('Bloom')}
+          <div class="list">
+            ${this.getCheckMenuItem('On', this.viewer.useBloom, () => this.viewer.useBloom = true )}
+            ${this.getCheckMenuItem('Off', !this.viewer.useBloom, () => this.viewer.useBloom = false )}
           </div>
         `;
         break;

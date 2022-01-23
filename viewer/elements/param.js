@@ -1,8 +1,8 @@
 import { LitElement } from 'https://cdn.skypack.dev/lit@2.0.2';
 
 export function getParams() {
-  const [, match = ''] = window.location.hash.match(/\?(.*)/) || [];
-  return new URLSearchParams(match);
+  // const [, match = ''] = window.location.hash.match(/\?(.*)/) || [];
+  return new URLSearchParams(window.location.search.substr(1));
 }
 
 export function setParams(params) {
@@ -21,9 +21,8 @@ export function deleteParams(params) {
   history.replaceState({}, document.title,  window.location.hash.replace(/(\?|$).*/, '?' + state.toString()));
 }
 
-export class WebGLTFParamElement extends LitElement {
+export class RevParamElement extends LitElement {
   connectedCallback(){
-    super.connectedCallback();
     const props = this.constructor.properties;
     for(const [name, value] of getParams()){
       if(props[name] && props[name].param) {
@@ -37,6 +36,7 @@ export class WebGLTFParamElement extends LitElement {
     for(const [name, prop] of Object.entries(props)) {
       if(this[name] === undefined) this[name] = prop.default;
     }
+    super.connectedCallback();
   }
 
   updated(changedProperties) {
@@ -61,4 +61,4 @@ export class WebGLTFParamElement extends LitElement {
   }
 }
 
-export default WebGLTFParamElement;
+export default RevParamElement;

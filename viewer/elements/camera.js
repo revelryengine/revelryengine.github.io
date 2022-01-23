@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'https://cdn.skypack.dev/lit@2.0.2';
 
-import { Camera, Node     } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/webgltf.js';
-import { vec3, mat4, quat } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/utils/gl-matrix.js';
+import { Camera, Node     } from 'https://cdn.jsdelivr.net/gh/revelryengine/gltf/lib/gltf.js';
+import { vec3, mat4, quat } from 'https://cdn.jsdelivr.net/gh/revelryengine/renderer/deps/gl-matrix.js';
 
 const tmpV = vec3.create();
 
@@ -82,13 +82,13 @@ class FocusRing extends LitElement {
   }
 }
 
-customElements.define('webgltf-viewer-camera-focus-ring', FocusRing);
+customElements.define('rev-gltf-viewer-camera-focus-ring', FocusRing);
 
 export class ViewerCamera extends LitElement {
   constructor() {
     super();
 
-    this.focusRing = document.createElement('webgltf-viewer-camera-focus-ring');
+    this.focusRing = document.createElement('rev-gltf-viewer-camera-focus-ring');
     this.node = new Node({
       matrix: mat4.create(),
       camera: new Camera({
@@ -242,7 +242,7 @@ export class ViewerCamera extends LitElement {
     this.target = target;
 
     /** DOF parameter adjustment */
-    if(this.renderer.settings.dof.enabled){
+    if(this.renderer.settings?.dof?.enabled){
       if(this.input.dof.time) {
         const t = (hrTime - this.input.dof.time) / this.speed.focus;
         this.renderer.settings.dof.distance = lerp(this.input.dof.start, this.input.dof.end, t);
@@ -256,35 +256,14 @@ export class ViewerCamera extends LitElement {
     }
     // console.log(this.renderer.settings.dof.range);
   }
+  
+  resetToScene(graph) {
+    const { position, target, idealDistance } = graph.fitCameraToScene(this.node);
 
-  resetToScene(scene, frustum) {
-    const { graph } = scene;
-
-    graph.updateNode(this.node);
-
-    frustum.update({ graph, cameraNode: this.node, viewport: frustum.viewport })
-
-    const { min, max } = graph.getSceneAABB();
-
-    for (let i = 0; i < 3; i++) {
-      this.target[i] = (max[i] + min[i]) / 2;
-    }
-    
-    const height = Math.abs(max[1] - this.target[1]) * 2;
-    const width  = Math.abs(max[0] - this.target[0]) * 2;
-
-    const yfov = 2 * Math.atan(1/frustum.projectionMatrix[5]); //This only works with a symmetical perspective matrix
-
-    this.idealDistance = Math.max(height, width) / Math.tan(yfov / 2);
-
-    this.node.camera[this.node.camera.type].znear = this.idealDistance / 100;
-    this.node.camera[this.node.camera.type].zfar = this.idealDistance * 10;
-
-    this.position[0] = this.target[0];
-    this.position[1] = this.target[1];
-    this.position[2] = this.target[2] + this.idealDistance;
-
-    this.zoom = 0;
+    this.idealDistance = idealDistance
+    this.position      = position;
+    this.target        = target;
+    this.zoom          = 0;
 
     setTimeout(() => this.focusCenter(), 100);
   }
@@ -304,7 +283,7 @@ export class ViewerCamera extends LitElement {
   }
 
   focus(x, y) {
-    if(this.renderer.settings.dof.enabled){
+    if(this.renderer.settings?.dof?.enabled){
       this.focusRing.x = x;
       this.focusRing.y = y;
       this.focusRing.active = true;
@@ -323,6 +302,6 @@ export class ViewerCamera extends LitElement {
   }
 }
 
-customElements.define('webgltf-viewer-camera', ViewerCamera);
+customElements.define('rev-gltf-viewer-camera', ViewerCamera);
 
 export default ViewerCamera;

@@ -1,338 +1,437 @@
-import { html, css           } from 'https://cdn.skypack.dev/lit@2.0.2';
-import { WebGLTFParamElement } from './param.js';
+import { html, css       } from 'https://cdn.skypack.dev/lit@2.0.2';
+import { RevParamElement } from './param.js';
 
-import { WebGLTF     } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/webgltf.js';
-import { Renderer    } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/renderer/renderer.js';
-import { Animator    } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/renderer/animator.js';
-import { Environment } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/renderer/environment.js';
+import { Renderer   } from 'https://cdn.jsdelivr.net/gh/revelryengine/renderer/lib/renderer.js';
+import { Animator   } from 'https://cdn.jsdelivr.net/gh/revelryengine/renderer/lib/animator.js';
+import { mat4       } from 'https://cdn.jsdelivr.net/gh/revelryengine/renderer/deps/gl-matrix.js';
 
-import samplesIndex from 'https://cdn.jsdelivr.net/gh/webgltf/webgltf-sample-models@main/index.js';
-import envIndex     from 'https://cdn.jsdelivr.net/gh/webgltf/webgltf-sample-models@main/environments/index.js';
+import { GLTF, Node                } from 'https://cdn.jsdelivr.net/gh/revelryengine/gltf/lib/gltf.js';
+import { KHRLightsPunctualLight    } from 'https://cdn.jsdelivr.net/gh/revelryengine/gltf/lib/extensions/KHR_lights_punctual.js';
+import { KHRLightsEnvironmentScene } from 'https://cdn.jsdelivr.net/gh/revelryengine/gltf/lib/extensions/KHR_lights_environment.js';
+
+import samplesIndex from 'https://cdn.jsdelivr.net/gh/revelryengine/sample-models/index.js';
+import envIndex     from 'https://cdn.jsdelivr.net/gh/revelryengine/sample-environments/index.js';
 
 import './controls.js';
 import './camera.js';
 import './toast.js';
-import './vr.js';
+// import './vr.js';
 
 const samples      = samplesIndex;
-const environments = envIndex.filter(({ res }) => res === 256);
+const environments = envIndex.filter(({ format }) => format === 'rgb16float');
 
-class WebGLTFViewerElement extends WebGLTFParamElement {
-  static get properties() {
-    return {
-      showcontrols: { type: Boolean, reflect: true },
+class RevGLTFViewerElement extends RevParamElement  {
+    #abortSample = null;
+    #abortEnv    = null;
 
-      loading:       { type: Boolean, reflect: true },
-      loadingSample: { type: Boolean },
-      loadingEnv:    { type: Boolean },
+    static get properties() {
+        return {
+            loading:       { type: Boolean, reflect: true },
+            unsupported:   { type: Boolean },
 
-      error:        { type: String,  reflect: true },
+            loadingSample: { type: Boolean },
+            loadingEnv:    { type: Boolean },
+            
+            canvas:        { type: Object },
+            gltfSample:    { type: Object },
+            gltfEnv:       { type: Object },
+            
+            forceWebGL2: { type: Boolean, param: true, default: false },
+            
+            useEnvironment: { type: Boolean, param: true, default: true },
+            usePunctual:    { type: Boolean, param: true, default: true },
+            useBloom:       { type: Boolean, param: true, default: false },
+            useSSAO:        { type: Boolean, param: true, default: false },
+            useShadows:     { type: Boolean, param: true, default: false },
+            useGrid:        { type: Boolean, param: true, default: false },
+            useFog:         { type: Boolean, param: true, default: false },
+            useDOF:         { type: Boolean, param: true, default: false },
 
-      webgltf: { type: Object },
-
-      usePunctual: { type: Boolean, param: true, default: true },
-      useIBL:      { type: Boolean, param: true, default: true },
-      useBloom:    { type: Boolean, param: true, default: true },
-      useSSAO:     { type: Boolean, param: true, default: true },
-      useShadows:  { type: Boolean, param: true, default: true },
-      useGrid:     { type: Boolean, param: true, default: false },
-      useFog:      { type: Boolean, param: true, default: false },
-      useDOF:      { type: Boolean, param: true, default: false },
-      useAABB:     { type: Boolean, param: true, default: false },
-
-      sample:      { type: String, param: true, default: 'SciFiHelmet' },
-      variant:     { type: String, param: true, default: 'glTF' },
-      material:    { type: String, param: true },
-      environment: { type: String, param: true, default: 'Round Platform' },
-      tonemap:     { type: String, param: true, default: '' },
-
-      cameraId:    { type: Number, param: true, default: -1 },
-      sceneId:     { type: Number, param: true, default: -1 },
-
-      debug:       { type: String, param: true, default: 'DEBUG_NONE' },
+            renderScale:    { type: Number, param: true, default: 1 },
+            
+            sample:      { type: String, param: true, default: 'SciFiHelmet' },
+            variant:     { type: String, param: true, default: 'glTF' },
+            material:    { type: String, param: true, default: '' },
+            environment: { type: String, param: true, default: 'Quattro Canti' },
+            tonemap:     { type: String, param: true, default: '' },
+            
+            cameraId:    { type: Number, param: true, default: -1 },
+            sceneId:     { type: Number, param: true, default: -1 },
+            
+            debugPBR:    { type: String, param: true, default: 'None' },
+            debugAABB:   { type: Boolean, param: true, default: false },
+        }
     }
-  }
-
-  constructor() {
     
-    super();
-    this.canvas   = document.createElement('canvas');
-    this.camera   = document.createElement('webgltf-viewer-camera');
-    this.controls = document.createElement('webgltf-viewer-controls');
-    this.toast    = document.createElement('webgltf-viewer-toast');
+    constructor() {
+        super();
+        this.settings = {
+            ...Renderer.defaultSettings,
+            renderScale: 1 / window.devicePixelRatio,
+            autoResize: true,
+        };
 
-    this.camera.addEventListener('pointerdown', () => {
-      this.controls.closeMenu();
-    });
+        this.canvas   = document.createElement('canvas');
+        this.camera   = document.createElement('rev-gltf-viewer-camera');
+        this.controls = document.createElement('rev-gltf-viewer-controls');
+        this.toast    = document.createElement('rev-gltf-viewer-toast');
+        
+        
+        this.camera.addEventListener('pointerdown', () => {
+            this.controls.closeMenu();
+        });
+        
+        window.addEventListener('keydown', (e) => {
+            if(e.key === 'PageDown') {
+                const index = this.samples.findIndex(({ name }) => name === this.sample);
+                const next  = this.samples[(index + 1) % this.samples.length];
+                this.sample = next.name;
+                e.preventDefault();
+            } else if(e.key === 'PageUp') {
+                const index = this.samples.findIndex(({ name }) => name === this.sample);
+                const prev  = this.samples[index < 1 ? this.samples.length - 1 : index - 1];
+                this.sample = prev.name;
+                e.preventDefault();
+            }
+        })
+        
+        this.samples      = samples;
+        this.environments = environments;
+        
+        this.defaultLights = [
+            new Node({
+                matrix: mat4.fromRotation(mat4.create(), Math.PI / 4, [-1, 1, 0]),
+                extensions: {
+                    KHR_lights_punctual: { 
+                        light: new KHRLightsPunctualLight({ type: 'directional', intensity: 2 })
+                    }
+                }
+            }),
+        ];
 
-    window.addEventListener('keydown', (e) => {
-      if(e.key === 'PageDown') {
-        const index = this.samples.findIndex(({ name }) => name === this.sample);
-        const next  = this.samples[(index + 1) % this.samples.length];
-        this.sample = next.name;
-        e.preventDefault();
-      } else if(e.key === 'PageUp') {
-        const index = this.samples.findIndex(({ name }) => name === this.sample);
-        const prev  = this.samples[index < 1 ? this.samples.length - 1 : index - 1];
-        this.sample = prev.name;
-        e.preventDefault();
-      }
-    })
-
-    this.samples      = samples;
-    this.environments = environments;
-  }
-
-  async connectedCallback() {
-    super.connectedCallback();
-    try {
-      this.renderer = new Renderer(this.canvas, { xrCompatible: true });
-      this.renderer.scaleFactor = 1 / window.devicePixelRatio;
-      this.camera.renderer = this.renderer;
-      // this.vrControl = document.createElement('webgltf-vr-control');
-      // this.vrControl.viewer = this;
-      this.requestId = requestAnimationFrame(t => this.renderWebGLTF(t));
-    } catch(e) {
-      console.warn(e);
+        this.defaultEnvironment = {
+            irradianceCoefficients: [ //Quattro Canti
+                new Float32Array([ 1.6842093, 1.9152059, 2.7332558]),
+                new Float32Array([ 1.2791452, 1.5860805, 2.4953382]),
+                new Float32Array([-0.2130158,-0.1758900,-0.2581007]),
+                new Float32Array([ 0.2989670, 0.4725520, 0.7639449]),
+                new Float32Array([ 0.2301868, 0.5252784, 0.9756353]),
+                new Float32Array([-0.3325697,-0.2930032,-0.4379021]),
+                new Float32Array([-0.4870316,-0.6346348,-1.0424628]),
+                new Float32Array([ 0.3440121, 0.3180480, 0.2901741]),
+                new Float32Array([-0.1153576,-0.3432447,-0.8736377]),
+            ],
+            extras: { sample: true }
+        }
     }
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    cancelAnimationFrame(this.requestId);
-  }
-
-  updated(changedProperties) {
-    super.updated(changedProperties);
-
-    const { settings } = this.renderer;
-
-    if(changedProperties.has('webgltf')) {
-      this.animator = new Animator(this.webgltf.animations);
-      const scene  = this.webgltf.scene || this.webgltf.scenes[0];
-      
-      scene.graph.update();
-      
-      this.camera.resetToScene(scene, this.renderer.frustum);
-
-      this.lastRenderTime = performance.now();      
-    }
-
-    if(changedProperties.has('usePunctual')
-      || changedProperties.has('useIBL') 
-      || changedProperties.has('useBloom') 
-      || changedProperties.has('useSSAO') 
-      || changedProperties.has('useShadows')
-      || changedProperties.has('useGrid')
-      || changedProperties.has('useFog')
-      || changedProperties.has('useDOF')
-      || changedProperties.has('tonemap')
-      || changedProperties.has('debug')) {
-      settings.punctual.enabled = this.usePunctual;
-      settings.ibl.enabled      = this.useIBL;
-      settings.bloom.enabled    = this.useBloom;
-      settings.ssao.enabled     = this.useSSAO;
-      settings.shadows.enabled  = this.useShadows;
-      settings.grid.enabled     = this.useGrid;
-      settings.fog.enabled      = this.useFog;
-      settings.dof.enabled      = this.useDOF;
-      settings.tonemap          = this.tonemap;
-      settings.debug            = this.debug;
-      this.renderer.reset();
-    }
-
-    if(changedProperties.has('sample') || changedProperties.has('variant') ) {
-      
-      this.loadSample();
-    }
-
-    if(changedProperties.has('material')) {
-      this.activateMaterial();
-    }
-
-    if(changedProperties.has('environment') && !changedProperties.has('useIBL')) {
-      if(this.useIBL) this.loadEnvironment();
-    }
-
-    if(changedProperties.has('useIBL')) {
-      if(this.useIBL && !this.renderer.environment) this.loadEnvironment();
-    }
-
-    if(changedProperties.has('useDOF')) {
-      if(this.useDOF) this.toast.addMessage(html`Depth of Field enabled.<br>Click/Tap to set focus distance.`, 5000);
-    }
-
-    if(changedProperties.has('useAABB')) {
-      settings.aabb.enabled = this.useAABB;
-    }
-
-    this.controls.update();
-  }
-
-  render(){
-    if(!this.renderer) {
-      console.log('Not supported');
-      return html`<p>Your browser does not support WebGL 2.0</p>`;
-    }
-
-    this.loading = this.loadingSample || this.loadingEnv;
     
-    return html`
-      ${this.camera}
-      ${this.canvas}
-      ${this.vrControl}
-      ${this.showcontrols ? this.controls : ''}
-      ${this.toast}
-      <div class="loader"><webgltf-icon name="spinner"></webgltf-icon> Loading</div>
-      <div class="error ${this.error ? 'show': 'hide'}">
-        <webgltf-icon name="exclamation-circle"></webgltf-icon> Failed to load model
-        <small><pre>${this.error}</pre></small>
-        <button @click="${() => this.error = false}">Dismiss</button>
-      </div>
-    `;
-  }
+    async createRenderer() {
+        try {
+            cancelAnimationFrame(this.requestId);
 
-  renderWebGLTF(hrTime) {
-    this.requestId = requestAnimationFrame(t => this.renderWebGLTF(t));
+            this.settings.forceWebGL2 = this.forceWebGL2;
 
-    if (this.webgltf) {
-      this.camera.updateInput(hrTime);
-      
-      const scene  = this.webgltf.scenes[0];
-      const camera = this.webgltf.nodes[this.cameraId]?.camera ? this.webgltf.nodes[this.cameraId] : this.camera.node;
+            console.log('Creating Renderer', this.settings);
+            
+            const renderer = await new Renderer(this.canvas, this.settings).initialized;
+            
+            this.renderer?.destroy();
+            this.renderer = renderer;
+            this.frustum  = this.renderer.createFrustum();
 
-      this.animator.update(hrTime - this.lastRenderTime, scene);
-      if(!this.vrControl?.xrSession) this.renderer.render(scene, camera);
+            // this.vrControl = document.createElement('rev-gltf-vr-control');
+            // this.vrControl.viewer = this;
+            
+            this.camera.renderer = this.renderer; //change this to set settings only
+            this.controls.update();
+
+            this.initSample();
+
+            this.requestId = requestAnimationFrame(t => this.renderGLTF(t));
+        } catch(e) {
+            console.warn(e);
+            this.unsupported = true;
+        }
     }
-    this.lastRenderTime = hrTime;
-  }
-
-  async loadSample() {
-    this.loadingSample = true;
-    this.error = false;
-
-    const sample = this.samples.find(({ name }) => name === this.sample);
-    const source = sample.variants[this.variant] ? sample.variants[this.variant] : sample.variants[Object.keys(sample.variants)[0]];
-
-    try {
-      if(this.abortController) this.abortController.abort();
-      this.abortController = new AbortController();
-
-      this.webgltf = await WebGLTF.load(source, this.abortController);
-      this.loadingSample = false;
-      this.toast.addMessage(html`Drag to Rotate<br>Scroll/Pinch to Zoom`, 3000);
-      console.log('Sample:', this.webgltf);
-    } catch(e) {
-      if(e.name !== 'AbortError') {
-        this.error = e.message;
-        console.trace(e);
-      }
+    async connectedCallback() {
+        super.connectedCallback();
+        await this.createRenderer();
     }
-  }
-
-  async loadEnvironment() {
-    this.loadingEnv = true;
-    const gltf = environments.find(({ name }) => name === this.environment)?.gltf;
-    this.renderer.environment = gltf ? await Environment.load(gltf) : null;
-    this.renderer.reset();
-    this.loadingEnv = false;
-
-    console.log('Environment:', this.renderer.environment);
-  }
-
-  activateMaterial() {
-    for(const variant of (this.webgltf?.extensions?.KHR_materials_variants?.variants || [])){
-      if(variant.name === this.material) {
-        variant.activate(this.renderer.context);
-      } else {
-        variant.deactivate(this.renderer.context);
-      }
+    
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        cancelAnimationFrame(this.requestId);
     }
-  }
+    
+    async updated(changedProperties) {
+        super.updated(changedProperties);
+        
+        if(changedProperties.has('useEnvironment') 
+            || changedProperties.has('usePunctual')
+            || changedProperties.has('useBloom') 
+            || changedProperties.has('useSSAO') 
+            || changedProperties.has('useShadows')
+            || changedProperties.has('useGrid')
+            || changedProperties.has('useFog')
+            || changedProperties.has('useDOF')
+            || changedProperties.has('tonemap')
+            || changedProperties.has('renderScale')
+            || changedProperties.has('debugPBR')
+            || changedProperties.has('debugAABB')) {
+            this.settings.environment.enabled = this.useEnvironment;
+            this.settings.punctual.enabled    = this.usePunctual;
+            
+            // this.settings.bloom.enabled    = this.useBloom;
+            // this.settings.ssao.enabled     = this.useSSAO;
+            // this.settings.shadows.enabled  = this.useShadows;
+            // this.settings.grid.enabled     = this.useGrid;
+            // this.settings.fog.enabled      = this.useFog;
+            // this.settings.dof.enabled      = this.useDOF;
+            this.settings.tonemap     = this.tonemap;
+            this.settings.renderScale = this.renderScale / window.devicePixelRatio;
+            this.settings.debug = {
+                pbr:  { enabled: this.debugPBR !== 'None', mode: this.debugPBR },
+                aabb: { enabled: this.debugAABB },
+            }
+            this.renderer?.reconfigure();
+        }
+        
+        if(changedProperties.has('sample') || changedProperties.has('variant')) {
+            this.loadSample();
+        }
 
-  static get styles() {
-    return css`
-      :host {
-        display: flex;
-        position: relative;
-        background: radial-gradient(var(--primary-dark), var(--primary-light));
-        width: 100%;
-        height: 100%;
-        align-items: center;
-        justify-content: center;
-      }
+        if(changedProperties.has('environment')) {
+            this.loadEnvironment();
+        }
+        
+        if(changedProperties.has('material')) {
+            this.activateMaterial();
+        }
+        
+        if(changedProperties.has('useDOF')) {
+            if(this.useDOF) this.toast.addMessage(html`Depth of Field enabled.<br>Click/Tap to set focus distance.`, 5000);
+        }
+        
+        
+        if(changedProperties.has('forceWebGL2')) {
+            if(this.renderer) {
+                const canvas  = document.createElement('canvas');
+                canvas.width  = this.canvas.width;
+                canvas.height = this.canvas.height;
+                this.canvas = canvas;
+                this.createRenderer();
+            }
+        }
+        
+        this.controls.update();
+    }
+    
+    render(){
+        if(this.unsupported) {
+            console.log('Not supported');
+            return html`<p>Your browser may not support WebGPU or WebGL2</p>`;
+        }
+        
+        this.loading = !!(this.loadingSample || this.loadingEnv);
 
-      :host([loading]) canvas {
-        filter: blur(12px);
-      }
+        return html`
+        ${this.camera}
+        ${this.canvas}
+        ${this.vrControl}
+        ${this.controls}
+        ${this.toast}
+        <div class="loader"><rev-gltf-viewer-icon name="spinner"></rev-gltf-viewer-icon> Loading</div>
+        `;
+    }
+    
+    renderGLTF(hrTime) {
+        if (this.gltfSample) {
+            this.animator.update(hrTime - this.lastRenderTime);
 
-      :host([loading]) .loader {
-        display: inline-block;
-      }
+            const cameraNode = this.gltfSample.nodes[this.cameraId]?.camera ? this.gltfSample.nodes[this.cameraId] : this.camera.node;
+            if(this.cameraId === -1) {
+                this.camera.updateInput(hrTime);
+                this.graph.updateNode(cameraNode);
+            }
+            
+            this.frustum.update({ graph: this.graph, cameraNode, width: this.renderer.width, height: this.renderer.height });
+            this.renderer.render(this.graph, this.frustum);
+            // if(!this.vrControl?.xrSession) this.renderer.render(scene, camera);
+        }
+        this.lastRenderTime = hrTime;
+        
+        this.requestId = requestAnimationFrame(t => this.renderGLTF(t));
+    }
 
-      .error.show {
-        display: inline-block;
-        font-size: var(--font-size-m);
-      }
+    initSample() {
+        if(!this.gltfSample) return;
+        this.graph    = this.renderer.getSceneGraph(this.gltfSample.scene || this.gltfSample.scenes[0]);
+        this.animator = new Animator(this.graph, this.gltfSample.animations);
+        
+        if(!this.graph.lights.length) {
+            this.graph.scene.nodes.push(...this.defaultLights);
+            this.graph.updateNodes(new Set(this.defaultLights));
+        }
 
-      .error button {
-        float: right;
-        cursor: pointer;
-      }
+        if(!this.graph.scene.extensions.KHR_lights_environment) {
+            this.graph.scene.extensions.KHR_lights_environment = new KHRLightsEnvironmentScene({ light: this.defaultEnvironment });
+            
+        }
+        this.activateMaterial();
+        this.initEnv();
+    }
+    
+    initEnv() {
+        if(!this.gltfSample || !this.gltfEnv) return;
+        
+        if(this.graph.scene.extensions.KHR_lights_environment.light.extras.sample) {
+            this.graph.scene.extensions.KHR_lights_environment = new KHRLightsEnvironmentScene({ light: this.gltfEnv.extensions.KHR_lights_environment.lights[0] });
+        }
+    }
+    
+    async loadSample() {
 
-      .loader, .error {
-        display: none;
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        font-size: var(--font-size-l);
-        background-color: rgba(0,0,0, 0.75);
-        padding: 15px;
-        border-radius: 5px;
-        z-index: 3;
-        user-select: none;
-      }
+        const sample = this.samples.find(({ name }) => name === this.sample);
+        const source = sample.variants[this.variant] ? sample.variants[this.variant] : sample.variants[Object.keys(sample.variants)[0]];
+        
+        if(this.gltfSample?.$uri === source) return;
 
-      .loader webgltf-icon {
-        animation: spin 2s linear infinite;
-      }
+        try {
+            this.#abortSample?.abort();
+            this.#abortSample = new AbortController();
 
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
+            this.loadingSample = true;
 
-      canvas {
-        width: 100%;
-        height: 100%;
-        touch-action: none;
-      }
+            this.gltfSample = await GLTF.load(source, this.#abortSample);
 
-      webgltf-viewer-camera {
-        z-index: 1;
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        touch-action: none;
-        line-height: 24px;
-      }
+            this.initSample();
 
-      webgltf-viewer-controls {
-        z-index: 2;
-      }
+            this.camera.resetToScene(this.graph);
+            
+            this.toast.addMessage(html`Drag to Rotate<br>Scroll/Pinch to Zoom`, 3000);
 
-      webgltf-viewer-toast {
-        z-index: 4;
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: 20vh;
-      }
-    `;
-  }
+            console.log('Sample:', this.gltfSample);
+        } catch(e) {
+            if(e.name !== 'AbortError') {
+                this.toast.addMessage(html`Error loading sample`, 3000);
+                console.trace(e);
+            }
+        }
+        this.loadingSample = false;
+    }
+
+    async loadEnvironment() {
+        const source = environments.find(({ name }) => name === this.environment)?.gltf;
+
+        if(this.gltfEnv?.$uri === source) return;
+
+        try {
+            this.#abortEnv?.abort();
+            this.#abortEnv = new AbortController();
+
+            this.loadingEnv = true;
+            this.gltfEnv = await GLTF.load(source, this.#abortEnv);
+            this.gltfEnv.extensions.KHR_lights_environment.lights[0].extras.sample = true;
+
+            this.initEnv();
+
+            console.log('Environment:', this.gltfEnv);
+        } catch(e) {
+            if(e.name !== 'AbortError') {
+                this.toast.addMessage(html`Error loading environment`, 3000);
+                console.trace(e);
+            }
+        }
+
+        this.loadingEnv = false;
+    }
+    
+    activateMaterial() {
+        for(const variant of (this.gltfSample?.extensions?.KHR_materials_variants?.variants || [])){
+            if(variant.name === this.material) {
+                variant.activate(this.renderer.renderPath.gal);
+            } else {
+                variant.deactivate(this.renderer.renderPath.gal);
+            }
+        }
+    }
+    
+    static get styles() {
+        return css`
+        :host {
+            display: flex;
+            position: relative;
+            background: radial-gradient(var(--primary-dark), var(--primary-light)); /* #303542; */
+            width: 100%;
+            height: 100%;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+            box-sizing: border-box;
+        }
+        
+        :host([loading]) canvas {
+            filter: blur(12px);
+        }
+        
+        :host([loading]) .loader {
+            display: inline-block;
+        }
+        
+    
+        .loader {
+            display: none;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            font-size: var(--font-size-l);
+            background-color: rgba(0,0,0, 0.75);
+            padding: 15px;
+            border-radius: 5px;
+            z-index: 3;
+            user-select: none;
+        }
+        
+        .loader rev-gltf-viewer-icon {
+            animation: spin 2s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        canvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+        
+        rev-gltf-viewer-camera {
+            z-index: 1;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            touch-action: none;
+            line-height: 24px;
+        }
+        
+        rev-gltf-viewer-controls {
+            z-index: 2;
+        }
+        
+        rev-gltf-viewer-toast {
+            z-index: 4;
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 20vh;
+        }
+        `;
+    }
 }
 
-customElements.define('webgltf-viewer', WebGLTFViewerElement);
+customElements.define('rev-gltf-viewer', RevGLTFViewerElement);

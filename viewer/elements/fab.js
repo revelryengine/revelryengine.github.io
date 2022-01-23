@@ -2,7 +2,7 @@ import { LitElement, html, css } from 'https://cdn.skypack.dev/lit@2.0.2';
 
 import './icon.js';
 
-class WebGLTFFAB extends LitElement {
+class RevGLTFViewerFAB extends LitElement {
   static get properties() {
     return {
       icon:     { type: String, reflect: true  },
@@ -49,11 +49,11 @@ class WebGLTFFAB extends LitElement {
 
   render(){
     return html`
-      <webgltf-icon name="${this.icon}"></webgltf-icon>
+      <rev-gltf-viewer-icon name="${this.icon}"></rev-gltf-viewer-icon>
     `;
   }
 }
 
-customElements.define('webgltf-fab', WebGLTFFAB);
+customElements.define('rev-gltf-viewer-fab', RevGLTFViewerFAB);
 
 

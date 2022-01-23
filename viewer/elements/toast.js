@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'https://cdn.skypack.dev/lit@2.0.2';
 import { repeat } from 'https://cdn.skypack.dev/lit@2.0.2/directives/repeat.js';
 
-export class WebGLTFViewerToast extends LitElement {
+export class RevGLTFViewerToast extends LitElement {
 
     static get properties() {
         return {
@@ -20,7 +20,7 @@ export class WebGLTFViewerToast extends LitElement {
             }
 
             .message {
-                background: rgba(0,0,0,0.75);
+                background: var(--primary);
                 padding: 8px;
                 border-radius: 5px;
                 text-align: center;
@@ -79,6 +79,6 @@ export class WebGLTFViewerToast extends LitElement {
 
 }
 
-customElements.define('webgltf-viewer-toast', WebGLTFViewerToast);
+customElements.define('rev-gltf-viewer-toast', RevGLTFViewerToast);
 
-export default WebGLTFViewerToast;
+export default RevGLTFViewerToast;

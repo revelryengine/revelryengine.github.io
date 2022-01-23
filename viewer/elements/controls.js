@@ -1,8 +1,10 @@
 import { LitElement, html, css } from 'https://cdn.skypack.dev/lit@2.0.2';
 
-import { DEBUG_DEFINES } from 'https://cdn.jsdelivr.net/npm/webgltf/lib/renderer/programs/gltf/gltf-program.js';
+import './fab.js';
 
-class WebGLTFViewerControls extends LitElement {
+import { PBR_DEBUG_MODES } from 'https://cdn.jsdelivr.net/gh/revelryengine/renderer/lib/constants.js';
+
+class RevGLTFViewerControls extends LitElement {
   static get properties() {
     return {
       hidden:     { type: Boolean, reflect: true },
@@ -19,23 +21,22 @@ class WebGLTFViewerControls extends LitElement {
   }
 
   render() {
+    const mode = this.viewer.renderer?.mode;
     return html`
       ${this.getMenu()}
-      <!-- <div class="animation">
-        <webgltf-icon name="play"></webgltf-icon>
-        <input type="range" />
-        <div class="time">00:00 / 00:35</div>
-      </div> -->
+      <div class="status">
+        ${mode ? `Render Mode: ${mode}`: ''}
+      </div>
       <div class="buttons">
-        <webgltf-icon name="question-circle" type="far" @click="${() => this.closeMenu()}"></webgltf-icon>
+        <rev-gltf-viewer-icon name="question-circle" type="far" @click="${() => this.closeMenu()}"></rev-gltf-viewer-icon>
 
-        <webgltf-icon name="cog"         @click="${() => this.openMenu('settings')}"></webgltf-icon>
-        <webgltf-icon name="lightbulb"   @click="${() => this.openMenu('lighting')}"></webgltf-icon>
-        <webgltf-icon name="street-view" @click="${() => this.openMenu('navigation')}"></webgltf-icon>
-        <webgltf-icon name="cube"        @click="${() => this.openMenu('model')}"></webgltf-icon>
+        <rev-gltf-viewer-icon name="cog"         @click="${() => this.openMenu('settings')}"></rev-gltf-viewer-icon>
+        <rev-gltf-viewer-icon name="lightbulb"   @click="${() => this.openMenu('lighting')}"></rev-gltf-viewer-icon>
+        <rev-gltf-viewer-icon name="street-view" @click="${() => this.openMenu('navigation')}"></rev-gltf-viewer-icon>
+        <rev-gltf-viewer-icon name="cube"        @click="${() => this.openMenu('model')}"></rev-gltf-viewer-icon>
 
-        <webgltf-icon name="vr-cardboard" disabled @click="${this.toggleXR}"></webgltf-icon>
-        <webgltf-icon name="${this.fullscreen ? 'compress': 'expand'}" @click="${this.toggleFullscreen}"></webgltf-icon>
+        <rev-gltf-viewer-icon name="vr-cardboard" @click="${this.toggleXR}" disabled></rev-gltf-viewer-icon>
+        <rev-gltf-viewer-icon name="${this.fullscreen ? 'compress': 'expand'}" @click="${this.toggleFullscreen}"></rev-gltf-viewer-icon>
       </div>
     `;
   }
@@ -75,7 +76,7 @@ class WebGLTFViewerControls extends LitElement {
 
   getMenuPage(page) {
     const { sample, variant, material } = this.viewer;
-    const materials = this.viewer.webgltf?.extensions?.KHR_materials_variants?.variants;
+    const materials = this.viewer.gltfSample?.extensions?.KHR_materials_variants?.variants;
 
     let content = '';
     switch(page) {
@@ -92,7 +93,7 @@ class WebGLTFViewerControls extends LitElement {
         content = html`
           ${this.getBackMenuItem('Sample')}
           ${this.getSubMenuItem('model>sample>khronos', 'Khronos Samples')}
-          ${this.getSubMenuItem('model>sample>webgltf', 'WebGLTF Samples')}
+          ${this.getSubMenuItem('model>sample>revelry', 'Revelry Engine Samples')}
         `;
         break;
       }
@@ -109,11 +110,11 @@ class WebGLTFViewerControls extends LitElement {
         `;
         break;
       }
-      case 'model>sample>webgltf': {
+      case 'model>sample>revelry': {
         content = html`
-          ${this.getBackMenuItem('WebGLTF Samples')}
+          ${this.getBackMenuItem('Revelry Engine Samples')}
           <div class="list">
-            ${this.viewer.samples.filter(({ group }) => group === 'WebGLTF').map(({ name }) => {
+            ${this.viewer.samples.filter(({ group }) => group === 'Revelry Engine').map(({ name }) => {
               const checked = this.viewer.sample === name;
               return this.getCheckMenuItem(name, checked, () => this.viewer.sample = name);
             })}
@@ -138,6 +139,7 @@ class WebGLTFViewerControls extends LitElement {
         content = html`
           ${this.getBackMenuItem('Material')}
           <div class="list">
+          ${this.getCheckMenuItem('Default', this.viewer.material === '', () => this.viewer.material = '')}
             ${materials?.map(({ name }) => {
               const checked = this.viewer.material === name;
               return this.getCheckMenuItem(name, checked, () => this.viewer.material = name);
@@ -160,7 +162,7 @@ class WebGLTFViewerControls extends LitElement {
       }
 
       case 'navigation': {
-        const value = this.viewer.webgltf.nodes[this.viewer.cameraId]?.camera ? this.viewer.webgltf.nodes[this.viewer.cameraId].name || `#${this.viewer.cameraId}` : 'Orbit Camera';
+        const value = this.viewer.gltfSample.nodes[this.viewer.cameraId]?.camera ? this.viewer.gltfSample.nodes[this.viewer.cameraId].name || `#${this.viewer.cameraId}` : 'Orbit Camera';
         content = html`
           ${this.getSubMenuItem('navigation>camera', 'Camera', value)}
         `;
@@ -168,11 +170,11 @@ class WebGLTFViewerControls extends LitElement {
       }
 
       case 'navigation>camera': {
-        let cameras = this.viewer.webgltf ? this.viewer.webgltf.nodes.filter((node) => node.camera) : [];
+        let cameras = this.viewer.gltfSample ? this.viewer.gltfSample.nodes.filter((node) => node.camera) : [];
 
         cameras = [
           { id: -1, node: { name: 'Orbit Camera'} },
-          ...cameras.map((node) => ({ id: this.viewer.webgltf.nodes.indexOf(node), node })),
+          ...cameras.map((node) => ({ id: this.viewer.gltfSample.nodes.indexOf(node), node })),
         ];
 
         content = html`
@@ -190,37 +192,27 @@ class WebGLTFViewerControls extends LitElement {
 
       case 'lighting': {
         content = html`
-          ${this.getSubMenuItem('lighting>punctual', 'Punctual Lighting',              this.viewer.usePunctual ? 'On': 'Off')}
-          ${this.getSubMenuItem('lighting>ibl',      'Image Based Lighting',           this.viewer.useIBL      ? 'On': 'Off')}
-          ${this.getSubMenuItem('lighting>bloom',    'Bloom',                          this.viewer.useBloom    ? 'On': 'Off')}
-          ${this.getSubMenuItem('lighting>ssao',     'Screen Space Ambient Occlusion', this.viewer.useSSAO     ? 'On': 'Off')}
-          ${this.getSubMenuItem('lighting>shadows',  'Shadows',                        this.viewer.useShadows  ? 'On': 'Off')}
-          ${this.getSubMenuItem('lighting>tonemap',  'Tonemap',                        this.viewer.tonemap)}
+          ${this.getSubMenuItem('lighting>environment', 'Environment Lighting',           this.viewer.useEnvironment ? 'On': 'Off')}
+          ${this.getSubMenuItem('lighting>punctual',    'Punctual Lighting',              this.viewer.usePunctual    ? 'On': 'Off')}
+          ${this.getSubMenuItem('lighting>bloom',       'Bloom',                          this.viewer.useBloom       ? 'On': 'Off', 'disabled')}
+          ${this.getSubMenuItem('lighting>ssao',        'Screen Space Ambient Occlusion', this.viewer.useSSAO        ? 'On': 'Off', 'disabled')}
+          ${this.getSubMenuItem('lighting>shadows',     'Shadows',                        this.viewer.useShadows     ? 'On': 'Off', 'disabled')}
+          ${this.getSubMenuItem('lighting>tonemap',     'Tonemap',                        this.viewer.tonemap)}
         `;
         break;
       }
-      case 'lighting>punctual': {
+      case 'lighting>environment': {
         content = html`
-          ${this.getBackMenuItem('Punctual Lighting')}
+          ${this.getBackMenuItem('Environment Lighting')}
           <div class="list">
-            ${this.getCheckMenuItem('On', this.viewer.usePunctual, () => this.viewer.usePunctual = true )}
-            ${this.getCheckMenuItem('Off', !this.viewer.usePunctual, () => this.viewer.usePunctual = false )}
+            ${this.getCheckMenuItem('On',   this.viewer.useEnvironment, () => this.viewer.useEnvironment = true )}
+            ${this.getCheckMenuItem('Off', !this.viewer.useEnvironment, () => this.viewer.useEnvironment = false )}
           </div>
+          ${this.getSubMenuItem('lighting>environment>environment', 'Environment', this.viewer.environment)}
         `;
         break;
       }
-      case 'lighting>ibl': {
-        content = html`
-          ${this.getBackMenuItem('Image Based Lighting')}
-          <div class="list">
-            ${this.getCheckMenuItem('On', this.viewer.useIBL, () => this.viewer.useIBL = true )}
-            ${this.getCheckMenuItem('Off', !this.viewer.useIBL, () => this.viewer.useIBL = false )}
-          </div>
-          ${this.getSubMenuItem('lighting>ibl>environment', 'Environment', this.viewer.environment)}
-        `;
-        break;
-      }
-      case 'lighting>ibl>environment': {
+      case 'lighting>environment>environment': {
         content = html`
           ${this.getBackMenuItem('Environment')}
           <div class="list">
@@ -232,11 +224,21 @@ class WebGLTFViewerControls extends LitElement {
         `;
         break;
       }
+      case 'lighting>punctual': {
+        content = html`
+          ${this.getBackMenuItem('Punctual Lighting')}
+          <div class="list">
+            ${this.getCheckMenuItem('On',   this.viewer.usePunctual, () => this.viewer.usePunctual = true )}
+            ${this.getCheckMenuItem('Off', !this.viewer.usePunctual, () => this.viewer.usePunctual = false )}
+          </div>
+        `;
+        break;
+      }
       case 'lighting>bloom': {
         content = html`
           ${this.getBackMenuItem('Bloom')}
           <div class="list">
-            ${this.getCheckMenuItem('On', this.viewer.useBloom, () => this.viewer.useBloom = true )}
+            ${this.getCheckMenuItem('On',   this.viewer.useBloom, () => this.viewer.useBloom = true )}
             ${this.getCheckMenuItem('Off', !this.viewer.useBloom, () => this.viewer.useBloom = false )}
           </div>
         `;
@@ -246,7 +248,7 @@ class WebGLTFViewerControls extends LitElement {
         content = html`
           ${this.getBackMenuItem('Screen Space Ambient Occlusion')}
           <div class="list">
-            ${this.getCheckMenuItem('On', this.viewer.useSSAO, () => this.viewer.useSSAO = true )}
+            ${this.getCheckMenuItem('On',   this.viewer.useSSAO, () => this.viewer.useSSAO = true )}
             ${this.getCheckMenuItem('Off', !this.viewer.useSSAO, () => this.viewer.useSSAO = false )}
           </div>
         `;
@@ -257,7 +259,7 @@ class WebGLTFViewerControls extends LitElement {
         content = html`
           ${this.getBackMenuItem('Shadows')}
           <div class="list">
-            ${this.getCheckMenuItem('On', this.viewer.useShadows, () => this.viewer.useShadows = true )}
+            ${this.getCheckMenuItem('On',   this.viewer.useShadows, () => this.viewer.useShadows = true )}
             ${this.getCheckMenuItem('Off', !this.viewer.useShadows, () => this.viewer.useShadows = false )}
           </div>
           <!-- ${this.getSliderMenuItem('Bias', 1, 0, 10, shadows.bias, (e) => shadows.bias = parseFloat(e.target.value))} -->
@@ -269,9 +271,9 @@ class WebGLTFViewerControls extends LitElement {
         content = html`
           ${this.getBackMenuItem('Tonemap')}
           <div class="list">
-            ${this.getCheckMenuItem('Aces Hill', this.viewer.tonemap === 'Aces Hill', () => this.viewer.tonemap = 'Aces Hill' )}
+            ${this.getCheckMenuItem('Aces Hill',                this.viewer.tonemap === 'Aces Hill',                () => this.viewer.tonemap = 'Aces Hill' )}
             ${this.getCheckMenuItem('Aces Hill Exposure Boost', this.viewer.tonemap === 'Aces Hill Exposure Boost', () => this.viewer.tonemap = 'Aces Hill Exposure Boost' )}
-            ${this.getCheckMenuItem('Aces Narkowicz', this.viewer.tonemap === 'Aces Narkowicz', () => this.viewer.tonemap = 'Aces Narkowicz' )}
+            ${this.getCheckMenuItem('Aces Narkowicz',           this.viewer.tonemap === 'Aces Narkowicz',           () => this.viewer.tonemap = 'Aces Narkowicz' )}
             ${this.getCheckMenuItem('Off', !this.viewer.tonemap, () => this.viewer.tonemap = '' )}
           </div>
         `;
@@ -280,19 +282,39 @@ class WebGLTFViewerControls extends LitElement {
 
       case 'settings': {
         content = html`
-          ${this.getSubMenuItem('settings>grid',  'Reference Grid', this.viewer.useGrid ? 'On': 'Off')}
-          ${this.getSubMenuItem('settings>fog',   'Fog', this.viewer.useFog ? 'On': 'Off')}
-          ${this.getSubMenuItem('settings>dof',   'Depth of Field', this.viewer.useDOF ? 'On': 'Off')}
-          ${this.getSubMenuItem('settings>debug', 'Debug', this.getDebugModes().find(({ define }) => this.viewer.debug === define)?.name || 'None')}
+          ${this.getSubMenuItem('settings>mode',  'Graphics Mode',  this.viewer.forceWebGL2 ? 'WebGL2': 'WebGPU')}
+          ${this.getSubMenuItem('settings>scale', 'Render Scale',   this.viewer.renderScale || 1)}
+          ${this.getSubMenuItem('settings>grid',  'Reference Grid', this.viewer.useGrid ? 'On': 'Off', 'disabled')}
+          ${this.getSubMenuItem('settings>fog',   'Fog',            this.viewer.useFog ? 'On': 'Off' , 'disabled')}
+          ${this.getSubMenuItem('settings>dof',   'Depth of Field', this.viewer.useDOF ? 'On': 'Off' ,'disabled')}
+          ${this.getSubMenuItem('settings>debug', 'Debug',          this.viewer.debugPBR || 'None')}
+        `;
+        break;
+      }
+      case 'settings>mode': {
+        content = html`
+          ${this.getBackMenuItem('Graphics Mode')}
+          <div class="list">
+            ${this.getCheckMenuItem('WebGPU', !this.viewer.forceWebGL2, () => this.viewer.forceWebGL2 = false )}
+            ${this.getCheckMenuItem('WebGL2',  this.viewer.forceWebGL2, () => this.viewer.forceWebGL2 = true )}
+          </div>
+        `;
+        break;
+      }
+      case 'settings>scale': {
+        content = html`
+          ${this.getBackMenuItem('Render Scale')}
+          <div class="list">
+            ${this.getSliderMenuItem('Scale', 0.25, 0.25, 2, this.viewer.renderScale, (e) => this.viewer.renderScale = parseFloat(e.target.value))}
+          </div>
         `;
         break;
       }
       case 'settings>grid': {
-        const haze = this.viewer.renderer.settings.haze;
         content = html`
           ${this.getBackMenuItem('Reference Grid')}
           <div class="list">
-            ${this.getCheckMenuItem('On', this.viewer.useGrid, () => this.viewer.useGrid = true )}
+            ${this.getCheckMenuItem('On',   this.viewer.useGrid, () => this.viewer.useGrid = true )}
             ${this.getCheckMenuItem('Off', !this.viewer.useGrid, () => this.viewer.useGrid = false )}
           </div>
         `;
@@ -303,7 +325,7 @@ class WebGLTFViewerControls extends LitElement {
         content = html`
           ${this.getBackMenuItem('Fog')}
           <div class="list">
-            ${this.getCheckMenuItem('On', this.viewer.useFog, () => this.viewer.useFog = true )}
+            ${this.getCheckMenuItem('On',   this.viewer.useFog, () => this.viewer.useFog = true )}
             ${this.getCheckMenuItem('Off', !this.viewer.useFog, () => this.viewer.useFog = false )}
           </div>
           ${this.getSliderMenuItem('Min', 1, 0, 50, fog.range[0], (e) => fog.range[0] = parseFloat(e.target.value))}
@@ -316,7 +338,7 @@ class WebGLTFViewerControls extends LitElement {
         content = html`
           ${this.getBackMenuItem('Depth of Field')}
           <div class="list">
-            ${this.getCheckMenuItem('On', this.viewer.useDOF, () => this.viewer.useDOF = true )}
+            ${this.getCheckMenuItem('On',   this.viewer.useDOF, () => this.viewer.useDOF = true )}
             ${this.getCheckMenuItem('Off', !this.viewer.useDOF, () => this.viewer.useDOF = false )}
           </div>
           ${this.getSliderMenuItem('Range', 0.5, 0.5, 25.0, dof.range, (e) => dof.range = parseFloat(e.target.value))}
@@ -326,10 +348,10 @@ class WebGLTFViewerControls extends LitElement {
       case 'settings>debug': {
         content = html`
           ${this.getBackMenuItem('Debug')}
-          ${this.getSubMenuItem('settings>debug>aabb', 'Bounding Boxes', this.viewer.useAABB ? 'On': 'Off')}
+          ${this.getSubMenuItem('settings>debug>aabb', 'Bounding Boxes', this.viewer.debugAABB ? 'On': 'Off', 'disabled')}
           <div class="list">
-            ${this.getDebugModes().map(({ name, define }) => {
-              return this.getCheckMenuItem(name, this.viewer.debug === define, () => this.viewer.debug = define )
+            ${['None'].concat(Object.keys(PBR_DEBUG_MODES)).map((name) => {
+              return this.getCheckMenuItem(name, this.viewer.debugPBR === name, () => this.viewer.debugPBR = name)
             })}
           </div>
         `;
@@ -340,8 +362,8 @@ class WebGLTFViewerControls extends LitElement {
         content = html`
           ${this.getBackMenuItem('Bounding Boxes')}
           <div class="list">
-            ${this.getCheckMenuItem('On', this.viewer.useAABB, () => this.viewer.useAABB = true )}
-            ${this.getCheckMenuItem('Off', !this.viewer.useAABB, () => this.viewer.useAABB = false )}
+            ${this.getCheckMenuItem('On',   this.viewer.debugAABB, () => this.viewer.debugAABB = true )}
+            ${this.getCheckMenuItem('Off', !this.viewer.debugAABB, () => this.viewer.debugAABB = false )}
           </div>
         `;
         break;
@@ -354,19 +376,19 @@ class WebGLTFViewerControls extends LitElement {
     this.menu = this.menu.split('>').slice(0, -1).join('>');
   }
 
-  getSubMenuItem(submenu, label, value) {
+  getSubMenuItem(submenu, label, value, disabled) {
     return html`
-      <div class="item submenu" @click="${() => this.openMenu(submenu)}">
+      <div class="item submenu" ?disabled=${disabled} @click="${() => this.openMenu(submenu)}">
         <div class="label">${label}</div>
         <div class="value" title="${value}">${value}</div>
-        <webgltf-icon name="angle-right"></webgltf-icon>
+        <rev-gltf-viewer-icon name="angle-right"></rev-gltf-viewer-icon>
       </div>`;
   }
 
   getBackMenuItem(label) {
     return html`
       <div class="item back" @click="${() => this.closeSubMenu()}">
-        <webgltf-icon name="angle-left"></webgltf-icon>
+        <rev-gltf-viewer-icon name="angle-left"></rev-gltf-viewer-icon>
         <div class="label">${label}</div>
       </div>
     `;
@@ -375,7 +397,7 @@ class WebGLTFViewerControls extends LitElement {
   getCheckMenuItem(label, checked, action) {
     return html`
       <div class="item check" @click="${action}" ?checked=${checked}>
-        <webgltf-icon name="check"></webgltf-icon>
+        <rev-gltf-viewer-icon name="check"></rev-gltf-viewer-icon>
         <div class="label">${label}</div>
       </div>
     `
@@ -385,15 +407,8 @@ class WebGLTFViewerControls extends LitElement {
     return html`
       <div class="item slider">
         <div class="label">${label}</div>
-        <input type="range" step="${step}" min="${min}" max="${max}" value="${value}" @input="${(e) => action(e) && (e.target.nextSibling.value = e.target.value)}"/><output>${value}</output>
+        <input type="range" step="${step}" min="${min}" max="${max}" value="${value}" @input="${(e) => action(e)}"/><output>${value.toFixed(2)}</output>
       </div>`;
-  }
-
-  getDebugModes() {
-    return Object.keys(DEBUG_DEFINES).filter(define => define !== 'DEBUG').map((define) => {
-      const name = define.replace('DEBUG_', '').toLowerCase().replaceAll('_', ' ').replace(/\b\w/g, c => c.toUpperCase()).replace('rgb', 'RGB');
-      return { name, define };
-    });
   }
 
   static get styles() {
@@ -407,12 +422,16 @@ class WebGLTFViewerControls extends LitElement {
         transition: opacity 0.5s ease-in-out;
 
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         padding: 12px;
       }
 
       :host([hidden]) {
         opacity: 0;
+      }
+
+      .status {
+        flex-grow: 1;
       }
 
       .buttons {
@@ -422,17 +441,17 @@ class WebGLTFViewerControls extends LitElement {
         gap: 16px;
       }
 
-      webgltf-icon {
+      rev-gltf-viewer-icon {
         user-select: none;
         font-size: large;
       }
 
-      webgltf-icon:hover:not([disabled]) {
+      rev-gltf-viewer-icon:hover:not([disabled]) {
         cursor: pointer;
         color: #fff;
       }
 
-      webgltf-icon[disabled] {
+      rev-gltf-viewer-icon[disabled] {
         opacity: 0.25;
       }
 
@@ -500,6 +519,11 @@ class WebGLTFViewerControls extends LitElement {
         text-align: right;
       }
 
+      .submenu[disabled] {
+        pointer-events: none;
+        opacity: 0.25;
+      }
+
       .page:not(:last-child) {
         max-width: 0px;
         min-width: 0px;
@@ -521,7 +545,7 @@ class WebGLTFViewerControls extends LitElement {
         overflow: auto;
       }
 
-      .page .list .item:not([checked]) webgltf-icon {
+      .page .list .item:not([checked]) rev-gltf-viewer-icon {
         opacity: 0;
       }
 
@@ -542,10 +566,12 @@ class WebGLTFViewerControls extends LitElement {
       .menu .item.slider input {
         flex: 1;
       }
+
+      
     `;
   }
 }
 
-customElements.define('webgltf-viewer-controls', WebGLTFViewerControls);
+customElements.define('rev-gltf-viewer-controls', RevGLTFViewerControls);
 
 

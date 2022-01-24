@@ -81,7 +81,7 @@ class RevGLTFViewerElement extends RevParamElement  {
             this.controls.closeMenu();
         });
         
-        window.addEventListener('keydown', (e) => {
+        self.addEventListener('keydown', (e) => {
             if(e.key === 'PageDown') {
                 const index = this.samples.findIndex(({ name }) => name === this.sample);
                 const next  = this.samples[(index + 1) % this.samples.length];
@@ -163,7 +163,7 @@ class RevGLTFViewerElement extends RevParamElement  {
         cancelAnimationFrame(this.requestId);
     }
     
-    async updated(changedProperties) {
+    updated(changedProperties) {
         super.updated(changedProperties);
         
         if(changedProperties.has('useEnvironment') 
@@ -302,8 +302,10 @@ class RevGLTFViewerElement extends RevParamElement  {
 
             this.loadingSample = true;
 
-            this.gltfSample = await GLTF.load(source, this.#abortSample);
-
+            const gltfSample = await GLTF.load(source, this.#abortSample);
+            await this.renderer.preloadTextures(gltfSample.textures);
+            
+            this.gltfSample = gltfSample;
             this.initSample();
 
             this.camera.resetToScene(this.graph);
@@ -349,9 +351,9 @@ class RevGLTFViewerElement extends RevParamElement  {
     activateMaterial() {
         for(const variant of (this.gltfSample?.extensions?.KHR_materials_variants?.variants || [])){
             if(variant.name === this.material) {
-                variant.activate(this.renderer.renderPath.gal);
+                variant.active = true;
             } else {
-                variant.deactivate(this.renderer.renderPath.gal);
+                variant.active = false;
             }
         }
     }

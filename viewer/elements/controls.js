@@ -284,7 +284,7 @@ class RevGLTFViewerControls extends LitElement {
                 content = html`
                 ${this.getSubMenuItem('settings>mode',  'Graphics Mode',  this.viewer.forceWebGL2 ? 'WebGL2': 'WebGPU')}
                 ${this.getSubMenuItem('settings>scale', 'Render Scale',   this.viewer.renderScale || 1)}
-                ${this.getSubMenuItem('settings>grid',  'Reference Grid', this.viewer.useGrid ? 'On': 'Off', 'disabled')}
+                ${this.getSubMenuItem('settings>grid',  'Reference Grid', this.viewer.useGrid ? 'On': 'Off')}
                 ${this.getSubMenuItem('settings>fog',   'Fog',            this.viewer.useFog ? 'On': 'Off' , 'disabled')}
                 ${this.getSubMenuItem('settings>dof',   'Depth of Field', this.viewer.useDOF ? 'On': 'Off' ,'disabled')}
                 ${this.getSubMenuItem('settings>debug', 'Debug',          this.viewer.debugPBR || 'None')}

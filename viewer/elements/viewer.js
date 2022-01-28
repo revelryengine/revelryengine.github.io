@@ -184,7 +184,7 @@ class RevGLTFViewerElement extends RevParamElement  {
             // this.settings.bloom.enabled    = this.useBloom;
             // this.settings.ssao.enabled     = this.useSSAO;
             // this.settings.shadows.enabled  = this.useShadows;
-            // this.settings.grid.enabled     = this.useGrid;
+            this.settings.grid.enabled     = this.useGrid;
             // this.settings.fog.enabled      = this.useFog;
             // this.settings.dof.enabled      = this.useDOF;
             this.settings.tonemap     = this.tonemap;

@@ -20,6 +20,8 @@ import './toast.js';
 const samples      = samplesIndex;
 const environments = envIndex.filter(({ format }) => format === 'rgb16float');
 
+const defaultRenderScale = Math.max(0.5, 1 / window.devicePixelRatio);
+
 class RevGLTFViewerElement extends RevParamElement  {
     #abortSample = null;
     #abortEnv    = null;
@@ -47,7 +49,7 @@ class RevGLTFViewerElement extends RevParamElement  {
             useFog:         { type: Boolean, param: true, default: false },
             useDOF:         { type: Boolean, param: true, default: false },
 
-            renderScale:    { type: Number, param: true, default: 1 },
+            renderScale:    { type: Number, param: true, default: defaultRenderScale },
             
             sample:      { type: String, param: true, default: 'SciFiHelmet' },
             variant:     { type: String, param: true, default: 'glTF' },
@@ -67,7 +69,7 @@ class RevGLTFViewerElement extends RevParamElement  {
         super();
         this.settings = {
             ...Renderer.defaultSettings,
-            renderScale: 1 / window.devicePixelRatio,
+            renderScale: defaultRenderScale,
             autoResize: true,
         };
 
@@ -188,7 +190,7 @@ class RevGLTFViewerElement extends RevParamElement  {
             // this.settings.fog.enabled      = this.useFog;
             // this.settings.dof.enabled      = this.useDOF;
             this.settings.tonemap     = this.tonemap;
-            this.settings.renderScale = this.renderScale / window.devicePixelRatio;
+            this.settings.renderScale = this.renderScale;
             this.settings.debug = {
                 pbr:  { enabled: this.debugPBR !== 'None', mode: this.debugPBR },
                 aabb: { enabled: this.debugAABB },

@@ -38,7 +38,7 @@ class RevGLTFViewerElement extends RevParamElement  {
             gltfSample:    { type: Object },
             gltfEnv:       { type: Object },
             
-            forceWebGL2: { type: Boolean, param: true, default: false },
+            forceWebGL2:    { type: Boolean, param: true, default: false },
             
             useEnvironment: { type: Boolean, param: true, default: true },
             usePunctual:    { type: Boolean, param: true, default: true },
@@ -67,17 +67,11 @@ class RevGLTFViewerElement extends RevParamElement  {
     
     constructor() {
         super();
-        this.settings = {
-            ...Renderer.defaultSettings,
-            renderScale: defaultRenderScale,
-            autoResize: true,
-        };
 
         this.canvas   = document.createElement('canvas');
         this.camera   = document.createElement('rev-gltf-viewer-camera');
         this.controls = document.createElement('rev-gltf-viewer-controls');
         this.toast    = document.createElement('rev-gltf-viewer-toast');
-        
         
         this.camera.addEventListener('pointerdown', () => {
             this.controls.closeMenu();
@@ -94,8 +88,16 @@ class RevGLTFViewerElement extends RevParamElement  {
                 const prev  = this.samples[index < 1 ? this.samples.length - 1 : index - 1];
                 this.sample = prev.name;
                 e.preventDefault();
+            } else if(e.key == 'e') {
+                this.useEnvironment = !this.useEnvironment;
+            } else if(e.key == 'p') {
+                this.usePunctual = !this.usePunctual;
+            } else if(e.key == 'g') {
+                this.useGrid = !this.useGrid;
+            } else if(e.key == 'f') {
+                this.useFog = !this.useFog;
             }
-        })
+        });
         
         this.samples      = samples;
         this.environments = environments;
@@ -131,11 +133,18 @@ class RevGLTFViewerElement extends RevParamElement  {
         try {
             cancelAnimationFrame(this.requestId);
 
-            this.settings.forceWebGL2 = this.forceWebGL2;
+            const settings = {
+                ...JSON.parse(JSON.stringify(Renderer.defaultSettings)),
+                autoResize  : true,
+                renderScale : this.renderScale,
+                forceWebGL2 : this.forceWebGL2,
+            }
 
-            console.log('Creating Renderer', this.settings);
+            this.reconcileSettings(settings);
+
+            console.log('Creating Renderer', settings);
             
-            const renderer = await new Renderer(this.canvas, this.settings).initialized;
+            const renderer = await new Renderer(this.canvas, settings).initialized;
             
             this.renderer?.destroy();
             this.renderer = renderer;
@@ -180,22 +189,10 @@ class RevGLTFViewerElement extends RevParamElement  {
             || changedProperties.has('renderScale')
             || changedProperties.has('debugPBR')
             || changedProperties.has('debugAABB')) {
-            this.settings.environment.enabled = this.useEnvironment;
-            this.settings.punctual.enabled    = this.usePunctual;
-            
-            // this.settings.bloom.enabled    = this.useBloom;
-            // this.settings.ssao.enabled     = this.useSSAO;
-            // this.settings.shadows.enabled  = this.useShadows;
-            this.settings.grid.enabled     = this.useGrid;
-            // this.settings.fog.enabled      = this.useFog;
-            // this.settings.dof.enabled      = this.useDOF;
-            this.settings.tonemap     = this.tonemap;
-            this.settings.renderScale = this.renderScale;
-            this.settings.debug = {
-                pbr:  { enabled: this.debugPBR !== 'None', mode: this.debugPBR },
-                aabb: { enabled: this.debugAABB },
+            if(this.renderer) {
+                this.reconcileSettings(this.renderer.settings);
+                this.renderer.reconfigure();
             }
-            this.renderer?.reconfigure();
         }
         
         if(changedProperties.has('sample') || changedProperties.has('variant')) {
@@ -226,6 +223,19 @@ class RevGLTFViewerElement extends RevParamElement  {
         }
         
         this.controls.update();
+    }
+
+    reconcileSettings(settings) {
+        settings.environment.enabled = this.useEnvironment;
+        settings.punctual.enabled    = this.usePunctual;
+        settings.grid.enabled        = this.useGrid;
+        settings.fog.enabled         = this.useFog;
+        settings.tonemap             = this.tonemap;
+        settings.renderScale         = this.renderScale;
+        settings.debug = {
+            pbr:  { enabled: this.debugPBR !== 'None', mode: this.debugPBR },
+            aabb: { enabled: this.debugAABB },
+        }
     }
     
     render(){

@@ -285,7 +285,7 @@ class RevGLTFViewerControls extends LitElement {
                 ${this.getSubMenuItem('settings>mode',  'Graphics Mode',  this.viewer.forceWebGL2 ? 'WebGL2': 'WebGPU')}
                 ${this.getSubMenuItem('settings>scale', 'Render Scale',   this.viewer.renderScale || 1)}
                 ${this.getSubMenuItem('settings>grid',  'Reference Grid', this.viewer.useGrid ? 'On': 'Off')}
-                ${this.getSubMenuItem('settings>fog',   'Fog',            this.viewer.useFog ? 'On': 'Off' , 'disabled')}
+                ${this.getSubMenuItem('settings>fog',   'Fog',            this.viewer.useFog ? 'On': 'Off')}
                 ${this.getSubMenuItem('settings>dof',   'Depth of Field', this.viewer.useDOF ? 'On': 'Off' ,'disabled')}
                 ${this.getSubMenuItem('settings>debug', 'Debug',          this.viewer.debugPBR || 'None')}
                 `;
@@ -311,12 +311,14 @@ class RevGLTFViewerControls extends LitElement {
                 break;
             }
             case 'settings>grid': {
+                const grid = this.viewer.renderer.settings.grid;
                 content = html`
                 ${this.getBackMenuItem('Reference Grid')}
                 <div class="list">
                 ${this.getCheckMenuItem('On',   this.viewer.useGrid, () => this.viewer.useGrid = true )}
                 ${this.getCheckMenuItem('Off', !this.viewer.useGrid, () => this.viewer.useGrid = false )}
                 </div>
+                ${this.getSliderMenuItem('Increment', 1, -3, 2, Math.log10(grid.increment), (e) => grid.increment = 10 ** parseFloat(e.target.value), grid.increment.toFixed(3))}
                 `;
                 break;
             }
@@ -328,8 +330,8 @@ class RevGLTFViewerControls extends LitElement {
                 ${this.getCheckMenuItem('On',   this.viewer.useFog, () => this.viewer.useFog = true )}
                 ${this.getCheckMenuItem('Off', !this.viewer.useFog, () => this.viewer.useFog = false )}
                 </div>
-                ${this.getSliderMenuItem('Min', 1, 0, 50, fog.range[0], (e) => fog.range[0] = parseFloat(e.target.value))}
-                ${this.getSliderMenuItem('Max', 5, 50, 500, fog.range[1], (e) => fog.range[1] = parseFloat(e.target.value))}
+                ${this.getSliderMenuItem('Min', 1, 0, 100, fog.range[0], (e) => fog.range[0] = parseFloat(e.target.value))}
+                ${this.getSliderMenuItem('Max', 5, fog.range[0], 500, Math.max(fog.range[0], fog.range[1]), (e) => fog.range[1] = parseFloat(e.target.value))}
                 `;
                 break;
             }
@@ -403,11 +405,11 @@ class RevGLTFViewerControls extends LitElement {
         `
     }
     
-    getSliderMenuItem(label, step, min, max, value, action) {
+    getSliderMenuItem(label, step, min, max, value, action, display) {
         return html`
         <div class="item slider">
         <div class="label">${label}</div>
-        <input type="range" step="${step}" min="${min}" max="${max}" value="${value}" @input="${(e) => action(e)}"/><output>${value.toFixed(2)}</output>
+        <input type="range" step="${step}" min="${min}" max="${max}" value="${value}" @input="${(e) => action(e) && this.update()}"/><output>${display || value.toFixed(2)}</output>
         </div>`;
     }
     
@@ -567,7 +569,10 @@ class RevGLTFViewerControls extends LitElement {
             flex: 1;
         }
         
-        
+        .menu .item.slider output {
+            min-width: 7ch;
+            text-align: right;
+        }
         `;
     }
 }

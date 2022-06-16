@@ -43,11 +43,11 @@ class RevGLTFViewerElement extends RevParamElement  {
             useEnvironment: { type: Boolean, param: true, default: true },
             usePunctual:    { type: Boolean, param: true, default: true },
             useBloom:       { type: Boolean, param: true, default: false },
-            useSSAO:        { type: Boolean, param: true, default: false },
+            useSSAO:        { type: Boolean, param: true, default: true },
             useShadows:     { type: Boolean, param: true, default: false },
             useGrid:        { type: Boolean, param: true, default: false },
             useFog:         { type: Boolean, param: true, default: false },
-            useDOF:         { type: Boolean, param: true, default: false },
+            useLens:        { type: Boolean, param: true, default: false },
 
             renderScale:    { type: Number, param: true, default: defaultRenderScale },
             
@@ -132,6 +132,7 @@ class RevGLTFViewerElement extends RevParamElement  {
     async createRenderer() {
         try {
             cancelAnimationFrame(this.requestId);
+            this.renderer?.destroy();
 
             const settings = {
                 ...JSON.parse(JSON.stringify(Renderer.defaultSettings)),
@@ -146,7 +147,6 @@ class RevGLTFViewerElement extends RevParamElement  {
             
             const renderer = await new Renderer(this.canvas, settings).initialized;
             
-            this.renderer?.destroy();
             this.renderer = renderer;
             this.frustum  = this.renderer.createFrustum();
 
@@ -184,7 +184,7 @@ class RevGLTFViewerElement extends RevParamElement  {
             || changedProperties.has('useShadows')
             || changedProperties.has('useGrid')
             || changedProperties.has('useFog')
-            || changedProperties.has('useDOF')
+            || changedProperties.has('useLens')
             || changedProperties.has('tonemap')
             || changedProperties.has('renderScale')
             || changedProperties.has('debugPBR')
@@ -207,8 +207,8 @@ class RevGLTFViewerElement extends RevParamElement  {
             this.activateMaterial();
         }
         
-        if(changedProperties.has('useDOF')) {
-            if(this.useDOF) this.toast.addMessage(html`Depth of Field enabled.<br>Click/Tap to set focus distance.`, 5000);
+        if(changedProperties.has('useLens')) {
+            //if(this.useLens) this.toast.addMessage(html`Depth of Field enabled.<br>Click/Tap to set focus distance.`, 5000);
         }
         
         
@@ -230,6 +230,8 @@ class RevGLTFViewerElement extends RevParamElement  {
         settings.punctual.enabled    = this.usePunctual;
         settings.grid.enabled        = this.useGrid;
         settings.fog.enabled         = this.useFog;
+        settings.ssao.enabled        = this.useSSAO;
+        settings.lens.enabled        = this.useLens;
         settings.tonemap             = this.tonemap;
         settings.renderScale         = this.renderScale;
         settings.debug = {

@@ -30,10 +30,10 @@ class RevGLTFViewerControls extends LitElement {
         <div class="buttons">
         <rev-gltf-viewer-icon name="question-circle" type="far" @click="${() => this.closeMenu()}"></rev-gltf-viewer-icon>
         
-        <rev-gltf-viewer-icon name="cog"         @click="${() => this.openMenu('settings')}"></rev-gltf-viewer-icon>
-        <rev-gltf-viewer-icon name="lightbulb"   @click="${() => this.openMenu('lighting')}"></rev-gltf-viewer-icon>
-        <rev-gltf-viewer-icon name="street-view" @click="${() => this.openMenu('navigation')}"></rev-gltf-viewer-icon>
-        <rev-gltf-viewer-icon name="cube"        @click="${() => this.openMenu('model')}"></rev-gltf-viewer-icon>
+        <rev-gltf-viewer-icon name="cog"       @click="${() => this.openMenu('settings')}"></rev-gltf-viewer-icon>
+        <rev-gltf-viewer-icon name="lightbulb" @click="${() => this.openMenu('lighting')}"></rev-gltf-viewer-icon>
+        <rev-gltf-viewer-icon name="camera"    @click="${() => this.openMenu('camera')}"></rev-gltf-viewer-icon>
+        <rev-gltf-viewer-icon name="cube"      @click="${() => this.openMenu('model')}"></rev-gltf-viewer-icon>
         
         <rev-gltf-viewer-icon name="vr-cardboard" @click="${this.toggleXR}" disabled></rev-gltf-viewer-icon>
         <rev-gltf-viewer-icon name="${this.fullscreen ? 'compress': 'expand'}" @click="${this.toggleFullscreen}"></rev-gltf-viewer-icon>
@@ -161,15 +161,16 @@ class RevGLTFViewerControls extends LitElement {
                 break;
             }
             
-            case 'navigation': {
+            case 'camera': {
                 const value = this.viewer.gltfSample.nodes[this.viewer.cameraId]?.camera ? this.viewer.gltfSample.nodes[this.viewer.cameraId].name || `#${this.viewer.cameraId}` : 'Orbit Camera';
                 content = html`
-                ${this.getSubMenuItem('navigation>camera', 'Camera', value)}
+                ${this.getSubMenuItem('camera>camera', 'Camera', value)}
+                ${this.getSubMenuItem('camera>lens',   'Lens Effect', this.viewer.useLens ? 'On': 'Off')}
                 `;
                 break;
             }
             
-            case 'navigation>camera': {
+            case 'camera>camera': {
                 let cameras = this.viewer.gltfSample ? this.viewer.gltfSample.nodes.filter((node) => node.camera) : [];
                 
                 cameras = [
@@ -189,13 +190,29 @@ class RevGLTFViewerControls extends LitElement {
                 `;
                 break;
             }
+
+            case 'camera>lens': {
+                const lens = this.viewer.renderer.settings.lens;
+                content = html`
+                ${this.getBackMenuItem('Lens Effect')}
+                <div class="list">
+                ${this.getCheckMenuItem('On',   this.viewer.useLens, () => this.viewer.useLens = true )}
+                ${this.getCheckMenuItem('Off', !this.viewer.useLens, () => this.viewer.useLens = false )}
+                </div>
+                ${this.getSliderMenuItem('Lens Size (mm)',            1, 1.0,  100, lens.size,        (e) => lens.size  = parseFloat(e.target.value))}
+                ${this.getSliderMenuItem('F Stop',                  0.1, 1.4,   22, lens.fStop,              (e) => lens.fStop = parseFloat(e.target.value))}
+                ${this.getSliderMenuItem('Focal Length (mm)',         1, 1.0, 2000, lens.focalLength, (e) => lens.focalLength = parseFloat(e.target.value))}
+                ${this.getSliderMenuItem('Focal Distance (meters)', 0.1, 0.1,  100, lens.focalDistance / 1000,      (e) => lens.focalDistance = parseFloat(e.target.value) * 1000)}
+                `;
+                break;
+            }
             
             case 'lighting': {
                 content = html`
                 ${this.getSubMenuItem('lighting>environment', 'Environment Lighting',           this.viewer.useEnvironment ? 'On': 'Off')}
                 ${this.getSubMenuItem('lighting>punctual',    'Punctual Lighting',              this.viewer.usePunctual    ? 'On': 'Off')}
                 ${this.getSubMenuItem('lighting>bloom',       'Bloom',                          this.viewer.useBloom       ? 'On': 'Off', 'disabled')}
-                ${this.getSubMenuItem('lighting>ssao',        'Screen Space Ambient Occlusion', this.viewer.useSSAO        ? 'On': 'Off', 'disabled')}
+                ${this.getSubMenuItem('lighting>ssao',        'Screen Space Ambient Occlusion', this.viewer.useSSAO        ? 'On': 'Off')}
                 ${this.getSubMenuItem('lighting>shadows',     'Shadows',                        this.viewer.useShadows     ? 'On': 'Off', 'disabled')}
                 ${this.getSubMenuItem('lighting>tonemap',     'Tonemap',                        this.viewer.tonemap)}
                 `;
@@ -286,7 +303,6 @@ class RevGLTFViewerControls extends LitElement {
                 ${this.getSubMenuItem('settings>scale', 'Render Scale',   this.viewer.renderScale || 1)}
                 ${this.getSubMenuItem('settings>grid',  'Reference Grid', this.viewer.useGrid ? 'On': 'Off')}
                 ${this.getSubMenuItem('settings>fog',   'Fog',            this.viewer.useFog ? 'On': 'Off')}
-                ${this.getSubMenuItem('settings>dof',   'Depth of Field', this.viewer.useDOF ? 'On': 'Off' ,'disabled')}
                 ${this.getSubMenuItem('settings>debug', 'Debug',          this.viewer.debugPBR || 'None')}
                 `;
                 break;
@@ -335,18 +351,7 @@ class RevGLTFViewerControls extends LitElement {
                 `;
                 break;
             }
-            case 'settings>dof': {
-                const dof = this.viewer.renderer.settings.dof;
-                content = html`
-                ${this.getBackMenuItem('Depth of Field')}
-                <div class="list">
-                ${this.getCheckMenuItem('On',   this.viewer.useDOF, () => this.viewer.useDOF = true )}
-                ${this.getCheckMenuItem('Off', !this.viewer.useDOF, () => this.viewer.useDOF = false )}
-                </div>
-                ${this.getSliderMenuItem('Range', 0.5, 0.5, 25.0, dof.range, (e) => dof.range = parseFloat(e.target.value))}
-                `;
-                break;
-            }
+            
             case 'settings>debug': {
                 content = html`
                 ${this.getBackMenuItem('Debug')}

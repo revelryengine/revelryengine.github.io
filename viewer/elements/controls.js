@@ -1,8 +1,8 @@
-import { LitElement, html, css } from 'https://cdn.skypack.dev/lit@2.0.2';
+import { LitElement, html, css } from 'lit';
 
 import './fab.js';
 
-import { PBR_DEBUG_MODES } from 'https://cdn.jsdelivr.net/gh/revelryengine/renderer/lib/constants.js';
+import { PBR_DEBUG_MODES } from 'revelryengine/renderer/lib/constants.js';
 
 class RevGLTFViewerControls extends LitElement {
     static get properties() {
@@ -211,7 +211,7 @@ class RevGLTFViewerControls extends LitElement {
                 content = html`
                 ${this.getSubMenuItem('lighting>environment', 'Environment Lighting',           this.viewer.useEnvironment ? 'On': 'Off')}
                 ${this.getSubMenuItem('lighting>punctual',    'Punctual Lighting',              this.viewer.usePunctual    ? 'On': 'Off')}
-                ${this.getSubMenuItem('lighting>bloom',       'Bloom',                          this.viewer.useBloom       ? 'On': 'Off', 'disabled')}
+                ${this.getSubMenuItem('lighting>bloom',       'Bloom',                          this.viewer.useBloom       ? 'On': 'Off')}
                 ${this.getSubMenuItem('lighting>ssao',        'Screen Space Ambient Occlusion', this.viewer.useSSAO        ? 'On': 'Off')}
                 ${this.getSubMenuItem('lighting>shadows',     'Shadows',                        this.viewer.useShadows     ? 'On': 'Off', 'disabled')}
                 ${this.getSubMenuItem('lighting>tonemap',     'Tonemap',                        this.viewer.tonemap)}
@@ -252,12 +252,16 @@ class RevGLTFViewerControls extends LitElement {
                 break;
             }
             case 'lighting>bloom': {
+                const bloom = this.viewer.renderer.settings.bloom;
                 content = html`
                 ${this.getBackMenuItem('Bloom')}
                 <div class="list">
                 ${this.getCheckMenuItem('On',   this.viewer.useBloom, () => this.viewer.useBloom = true )}
                 ${this.getCheckMenuItem('Off', !this.viewer.useBloom, () => this.viewer.useBloom = false )}
                 </div>
+                ${this.getSliderMenuItem('Threshold',            0.1, 0,  10, bloom.threshold,     (e) => bloom.threshold  = parseFloat(e.target.value))}
+                ${this.getSliderMenuItem('Intensity',            0.1, 0,  10, bloom.intensity,     (e) => bloom.intensity = parseFloat(e.target.value))}
+                ${this.getSliderMenuItem('Soft Threshold',       0.1, 0,  10, bloom.softThreshold, (e) => bloom.softThreshold = parseFloat(e.target.value))}
                 `;
                 break;
             }
@@ -439,6 +443,7 @@ class RevGLTFViewerControls extends LitElement {
         
         .status {
             flex-grow: 1;
+            user-select: none;
         }
         
         .buttons {

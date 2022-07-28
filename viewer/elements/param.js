@@ -1,4 +1,4 @@
-import { LitElement } from 'https://cdn.skypack.dev/lit@2.0.2';
+import { LitElement } from 'lit';
 
 export function getParams() {
     // const [, match = ''] = window.location.hash.match(/\?(.*)/) || [];

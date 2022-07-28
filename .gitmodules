@@ -1,0 +1,3 @@
+[submodule "tumblehex"]
+	path = tumblehex
+	url = git@github.com:revelryengine/tumblehex.git

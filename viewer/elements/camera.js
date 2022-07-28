@@ -1,7 +1,7 @@
-import { LitElement, html, css } from 'https://cdn.skypack.dev/lit@2.0.2';
+import { LitElement, html, css } from 'lit';
 
-import { Camera, Node     } from 'https://cdn.jsdelivr.net/gh/revelryengine/gltf/lib/gltf.js';
-import { vec3, mat4, quat } from 'https://cdn.jsdelivr.net/gh/revelryengine/renderer/deps/gl-matrix.js';
+import { Camera, Node     } from 'revelryengine/gltf/lib/gltf.js';
+import { vec3, mat4, quat } from 'revelryengine/renderer/deps/gl-matrix.js';
 
 const tmpV = vec3.create();
 

@@ -1,16 +1,15 @@
-import { html, css       } from 'https://cdn.skypack.dev/lit@2.0.2';
+import { html, css       } from 'lit';
 import { RevParamElement } from './param.js';
 
-import { Renderer   } from 'https://cdn.jsdelivr.net/gh/revelryengine/renderer/lib/renderer.js';
-import { Animator   } from 'https://cdn.jsdelivr.net/gh/revelryengine/renderer/lib/animator.js';
-import { mat4       } from 'https://cdn.jsdelivr.net/gh/revelryengine/renderer/deps/gl-matrix.js';
+import { Renderer } from 'revelryengine/renderer/lib/renderer.js';
+import { mat4     } from 'revelryengine/renderer/deps/gl-matrix.js';
 
-import { GLTF, Node                } from 'https://cdn.jsdelivr.net/gh/revelryengine/gltf/lib/gltf.js';
-import { KHRLightsPunctualLight    } from 'https://cdn.jsdelivr.net/gh/revelryengine/gltf/lib/extensions/KHR_lights_punctual.js';
-import { KHRLightsEnvironmentScene } from 'https://cdn.jsdelivr.net/gh/revelryengine/gltf/lib/extensions/KHR_lights_environment.js';
+import { GLTF, Node                } from 'revelryengine/gltf/lib/gltf.js';
+import { KHRLightsPunctualLight    } from 'revelryengine/gltf/lib/extensions/KHR_lights_punctual.js';
+import { KHRLightsEnvironmentScene } from 'revelryengine/gltf/lib/extensions/KHR_lights_environment.js';
 
-import samplesIndex from 'https://cdn.jsdelivr.net/gh/revelryengine/sample-models/index.js';
-import envIndex     from 'https://cdn.jsdelivr.net/gh/revelryengine/sample-environments/index.js';
+import samplesIndex from 'revelryengine/sample-models/index.js';
+import envIndex     from 'revelryengine/sample-environments/index.js';
 
 import './controls.js';
 import './camera.js';
@@ -232,6 +231,7 @@ class RevGLTFViewerElement extends RevParamElement  {
         settings.fog.enabled         = this.useFog;
         settings.ssao.enabled        = this.useSSAO;
         settings.lens.enabled        = this.useLens;
+        settings.bloom.enabled       = this.useBloom;
         settings.tonemap             = this.tonemap;
         settings.renderScale         = this.renderScale;
         settings.debug = {
@@ -260,7 +260,11 @@ class RevGLTFViewerElement extends RevParamElement  {
     
     renderGLTF(hrTime) {
         if (this.gltfSample) {
-            this.animator.update(hrTime - this.lastRenderTime);
+            this.animators?.forEach(animator => {
+                animator.update(hrTime - this.lastRenderTime);
+                animator.targets.nodes && this.graph.updateNodes(animator.targets.nodes);
+                animator.targets.materials && this.graph.updateMaterials(animator.targets.materials);
+            });
 
             const cameraNode = this.gltfSample.nodes[this.cameraId]?.camera ? this.gltfSample.nodes[this.cameraId] : this.camera.node;
             if(this.cameraId === -1) {
@@ -279,8 +283,9 @@ class RevGLTFViewerElement extends RevParamElement  {
 
     initSample() {
         if(!this.gltfSample) return;
-        this.graph    = this.renderer.getSceneGraph(this.gltfSample.scene || this.gltfSample.scenes[0]);
-        this.animator = new Animator(this.graph, this.gltfSample.animations);
+
+        this.graph      = this.renderer.getSceneGraph(this.gltfSample.scene || this.gltfSample.scenes[0]);
+        this.animators = this.gltfSample.animations.map(animation => animation.createAnimator());
         
         if(!this.graph.lights.length) {
             this.graph.scene.nodes.push(...this.defaultLights);
@@ -317,7 +322,7 @@ class RevGLTFViewerElement extends RevParamElement  {
             this.loadingSample = true;
 
             const gltfSample = await GLTF.load(source, this.#abortSample);
-            await this.renderer.preloadTextures(gltfSample.textures);
+            await this.renderer?.preloadTextures(gltfSample.textures);
             
             this.gltfSample = gltfSample;
             this.initSample();
@@ -363,11 +368,11 @@ class RevGLTFViewerElement extends RevParamElement  {
     }
     
     activateMaterial() {
+        if(!this.material) return this.graph?.setActiveMaterialVariant(null);
+
         for(const variant of (this.gltfSample?.extensions?.KHR_materials_variants?.variants || [])){
             if(variant.name === this.material) {
-                variant.active = true;
-            } else {
-                variant.active = false;
+                return this.graph.setActiveMaterialVariant(variant);
             }
         }
     }

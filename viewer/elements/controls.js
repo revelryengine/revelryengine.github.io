@@ -283,7 +283,6 @@ class RevGLTFViewerControls extends LitElement {
                 ${this.getCheckMenuItem('On',   this.viewer.useShadows, () => this.viewer.useShadows = true )}
                 ${this.getCheckMenuItem('Off', !this.viewer.useShadows, () => this.viewer.useShadows = false )}
                 </div>
-                <!-- ${this.getSliderMenuItem('Bias', 1, 0, 10, shadows.bias, (e) => shadows.bias = parseFloat(e.target.value))} -->
                 ${this.getSliderMenuItem('Lambda', 0.01, 0.1, 1.0, shadows.lambda, (e) => shadows.lambda = parseFloat(e.target.value))}
                 `;
                 break;

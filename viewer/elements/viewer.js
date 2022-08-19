@@ -43,7 +43,7 @@ class RevGLTFViewerElement extends RevParamElement  {
             usePunctual:    { type: Boolean, param: true, default: true },
             useBloom:       { type: Boolean, param: true, default: false },
             useSSAO:        { type: Boolean, param: true, default: true },
-            useShadows:     { type: Boolean, param: true, default: false },
+            useShadows:     { type: Boolean, param: true, default: true },
             useGrid:        { type: Boolean, param: true, default: false },
             useFog:         { type: Boolean, param: true, default: false },
             useLens:        { type: Boolean, param: true, default: false },
@@ -227,6 +227,7 @@ class RevGLTFViewerElement extends RevParamElement  {
     reconcileSettings(settings) {
         settings.environment.enabled = this.useEnvironment;
         settings.punctual.enabled    = this.usePunctual;
+        settings.shadows.enabled     = this.useShadows;
         settings.grid.enabled        = this.useGrid;
         settings.fog.enabled         = this.useFog;
         settings.ssao.enabled        = this.useSSAO;

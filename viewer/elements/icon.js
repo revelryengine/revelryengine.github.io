@@ -20,8 +20,8 @@ class RevGLTFViewerIcon extends LitElement {
     
     render(){
         return html`
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/css/all.min.css" rel="stylesheet">
-        <i class="${this.type || 'fas'} fa-${this.name}"></i>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css" rel="stylesheet">
+        <i class="${this.type || 'fa-solid'} fa-${this.name}"></i>
         `;
     }
 }

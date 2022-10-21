@@ -73,7 +73,14 @@ export class RevGLTFViewerToast extends LitElement {
 
     #ids = 0;
     addMessage(content, time) {
-        this.messages.push({ content, time, id: ++this.#ids });
+        const id = ++this.#ids;
+        this.messages.push({ content, time, id });
+        this.requestUpdate();
+        return id;
+    }
+
+    dismissMessage(id) {
+        this.messages.splice(this.messages.findIndex(m => m.id === id), 1);
         this.requestUpdate();
     }
 

@@ -22,6 +22,9 @@ class RevGLTFViewerControls extends LitElement {
     
     render() {
         const mode = this.viewer.renderer?.mode;
+        const audio = this.viewer.renderer?.settings.audio || {};
+        const volume = `volume${audio.muted || !audio.enabled ? '-mute' : '-high'}`;
+
         return html`
         ${this.getMenu()}
         <div class="status">
@@ -34,7 +37,8 @@ class RevGLTFViewerControls extends LitElement {
         <rev-gltf-viewer-icon name="lightbulb" @click="${() => this.openMenu('lighting')}"></rev-gltf-viewer-icon>
         <rev-gltf-viewer-icon name="camera"    @click="${() => this.openMenu('camera')}"></rev-gltf-viewer-icon>
         <rev-gltf-viewer-icon name="cube"      @click="${() => this.openMenu('model')}"></rev-gltf-viewer-icon>
-        
+        <rev-gltf-viewer-icon name="${volume}" @click="${() => this.openMenu('volume')}"></rev-gltf-viewer-icon>
+
         <rev-gltf-viewer-icon name="vr-cardboard" @click="${this.toggleXR}" disabled></rev-gltf-viewer-icon>
         <rev-gltf-viewer-icon name="${this.fullscreen ? 'compress': 'expand'}" @click="${this.toggleFullscreen}"></rev-gltf-viewer-icon>
         </div>
@@ -214,7 +218,16 @@ class RevGLTFViewerControls extends LitElement {
                 ${this.getSubMenuItem('lighting>bloom',       'Bloom',                          this.viewer.useBloom       ? 'On': 'Off')}
                 ${this.getSubMenuItem('lighting>ssao',        'Screen Space Ambient Occlusion', this.viewer.useSSAO        ? 'On': 'Off')}
                 ${this.getSubMenuItem('lighting>shadows',     'Shadows',                        this.viewer.useShadows     ? 'On': 'Off')}
+                ${this.getSubMenuItem('lighting>exposure',    'Exposure',                       this.viewer.renderer.settings.exposure)}
                 ${this.getSubMenuItem('lighting>tonemap',     'Tonemap',                        this.viewer.tonemap)}
+                `;
+                break;
+            }
+            case 'lighting>exposure': {
+                const { settings } = this.viewer.renderer;
+                content = html`
+                ${this.getBackMenuItem('Exposure')}
+                ${this.getSliderMenuItem('Exposure', 0.1, 0.1, 5, settings.exposure, (e) => settings.exposure = parseFloat(e.target.value))}
                 `;
                 break;
             }
@@ -375,6 +388,18 @@ class RevGLTFViewerControls extends LitElement {
                 ${this.getCheckMenuItem('On',   this.viewer.debugAABB, () => this.viewer.debugAABB = true )}
                 ${this.getCheckMenuItem('Off', !this.viewer.debugAABB, () => this.viewer.debugAABB = false )}
                 </div>
+                `;
+                break;
+            }
+
+            case 'volume': {
+                const { audio } = this.viewer.renderer.settings;
+                content = html`
+                <div class="list">
+                ${this.getCheckMenuItem('On',   this.viewer.useAudio, () => this.viewer.useAudio = true )}
+                ${this.getCheckMenuItem('Off', !this.viewer.useAudio, () => this.viewer.useAudio = false )}
+                </div>
+                ${this.getSliderMenuItem('Volume', 1, 0, 100, audio.volume * 100, (e) => audio.volume = parseFloat(e.target.value) / 100)}
                 `;
                 break;
             }

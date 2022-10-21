@@ -39,6 +39,7 @@ class RevGLTFViewerElement extends RevParamElement  {
             
             forceWebGL2:    { type: Boolean, param: true, default: false },
             
+            useAudio:       { type: Boolean, param: true, default: true },
             useEnvironment: { type: Boolean, param: true, default: true },
             usePunctual:    { type: Boolean, param: true, default: true },
             useBloom:       { type: Boolean, param: true, default: false },
@@ -176,7 +177,8 @@ class RevGLTFViewerElement extends RevParamElement  {
     updated(changedProperties) {
         super.updated(changedProperties);
         
-        if(changedProperties.has('useEnvironment') 
+        if(changedProperties.has('useAudio') 
+            || changedProperties.has('useEnvironment') 
             || changedProperties.has('usePunctual')
             || changedProperties.has('useBloom') 
             || changedProperties.has('useSSAO') 
@@ -225,6 +227,7 @@ class RevGLTFViewerElement extends RevParamElement  {
     }
 
     reconcileSettings(settings) {
+        settings.audio.enabled       = this.useAudio;
         settings.environment.enabled = this.useEnvironment;
         settings.punctual.enabled    = this.usePunctual;
         settings.shadows.enabled     = this.useShadows;
@@ -285,7 +288,7 @@ class RevGLTFViewerElement extends RevParamElement  {
     initSample() {
         if(!this.gltfSample) return;
 
-        this.graph      = this.renderer.getSceneGraph(this.gltfSample.scene || this.gltfSample.scenes[0]);
+        this.graph     = this.renderer.getSceneGraph(this.gltfSample.scene || this.gltfSample.scenes[0]);
         this.animators = this.gltfSample.animations.map(animation => animation.createAnimator());
         
         if(!this.graph.lights.length) {
@@ -324,6 +327,14 @@ class RevGLTFViewerElement extends RevParamElement  {
 
             const gltfSample = await GLTF.load(source, this.#abortSample);
             await this.renderer?.preloadTextures(gltfSample.textures);
+
+            if(gltfSample.extensions.KHR_audio) {
+                if(!this.renderer.renderPath.audio.context) {
+                    const msg = this.toast.addMessage(html`Sample includes audio.<br>Interact with page to allow sound and finish loading.`, 3000000);
+                    await this.renderer.renderPath.audio.contextPromise;
+                    this.toast.dismissMessage(msg);
+                }
+            }
             
             this.gltfSample = gltfSample;
             this.initSample();

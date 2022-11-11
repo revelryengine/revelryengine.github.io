@@ -206,20 +206,21 @@ class RevGLTFViewerControls extends LitElement {
                 ${this.getSliderMenuItem('Lens Size (mm)',            1, 1.0,  100, lens.size,        (e) => lens.size  = parseFloat(e.target.value))}
                 ${this.getSliderMenuItem('F Stop',                  0.1, 1.4,   22, lens.fStop,              (e) => lens.fStop = parseFloat(e.target.value))}
                 ${this.getSliderMenuItem('Focal Length (mm)',         1, 1.0, 2000, lens.focalLength, (e) => lens.focalLength = parseFloat(e.target.value))}
-                ${this.getSliderMenuItem('Focal Distance (meters)', 0.1, 0.1,  100, lens.focalDistance / 1000,      (e) => lens.focalDistance = parseFloat(e.target.value) * 1000)}
+                ${this.getSliderMenuItem('Focal Distance (meters)', 0.5, 0.5,  500, lens.focalDistance / 1000,      (e) => lens.focalDistance = parseFloat(e.target.value) * 1000)}
                 `;
                 break;
             }
             
             case 'lighting': {
                 content = html`
-                ${this.getSubMenuItem('lighting>environment', 'Environment Lighting',           this.viewer.useEnvironment ? 'On': 'Off')}
-                ${this.getSubMenuItem('lighting>punctual',    'Punctual Lighting',              this.viewer.usePunctual    ? 'On': 'Off')}
-                ${this.getSubMenuItem('lighting>bloom',       'Bloom',                          this.viewer.useBloom       ? 'On': 'Off')}
-                ${this.getSubMenuItem('lighting>ssao',        'Screen Space Ambient Occlusion', this.viewer.useSSAO        ? 'On': 'Off')}
-                ${this.getSubMenuItem('lighting>shadows',     'Shadows',                        this.viewer.useShadows     ? 'On': 'Off')}
-                ${this.getSubMenuItem('lighting>exposure',    'Exposure',                       this.viewer.renderer.settings.exposure)}
-                ${this.getSubMenuItem('lighting>tonemap',     'Tonemap',                        this.viewer.tonemap)}
+                ${this.getSubMenuItem('lighting>environment',  'Environment Lighting',           this.viewer.useEnvironment ? 'On': 'Off')}
+                ${this.getSubMenuItem('lighting>punctual',     'Punctual Lighting',              this.viewer.usePunctual    ? 'On': 'Off')}
+                ${this.getSubMenuItem('lighting>transmission', 'Transmission',                   this.viewer.useTransmission ? 'On': 'Off')}
+                ${this.getSubMenuItem('lighting>bloom',        'Bloom',                          this.viewer.useBloom       ? 'On': 'Off')}
+                ${this.getSubMenuItem('lighting>ssao',         'Screen Space Ambient Occlusion', this.viewer.useSSAO        ? 'On': 'Off')}
+                ${this.getSubMenuItem('lighting>shadows',      'Shadows',                        this.viewer.useShadows     ? 'On': 'Off')}
+                ${this.getSubMenuItem('lighting>exposure',     'Exposure',                       this.viewer.renderer.settings.exposure)}
+                ${this.getSubMenuItem('lighting>tonemap',      'Tonemap',                        this.viewer.tonemap)}
                 `;
                 break;
             }
@@ -260,6 +261,16 @@ class RevGLTFViewerControls extends LitElement {
                 <div class="list">
                 ${this.getCheckMenuItem('On',   this.viewer.usePunctual, () => this.viewer.usePunctual = true )}
                 ${this.getCheckMenuItem('Off', !this.viewer.usePunctual, () => this.viewer.usePunctual = false )}
+                </div>
+                `;
+                break;
+            }
+            case 'lighting>transmission': {
+                content = html`
+                ${this.getBackMenuItem('Transmission')}
+                <div class="list">
+                ${this.getCheckMenuItem('On',   this.viewer.useTransmission, () => this.viewer.useTransmission = true )}
+                ${this.getCheckMenuItem('Off', !this.viewer.useTransmission, () => this.viewer.useTransmission = false )}
                 </div>
                 `;
                 break;
@@ -315,11 +326,14 @@ class RevGLTFViewerControls extends LitElement {
             
             case 'settings': {
                 content = html`
-                ${this.getSubMenuItem('settings>mode',  'Graphics Mode',  this.viewer.forceWebGL2 ? 'WebGL2': 'WebGPU')}
-                ${this.getSubMenuItem('settings>scale', 'Render Scale',   this.viewer.renderScale || 1)}
-                ${this.getSubMenuItem('settings>grid',  'Reference Grid', this.viewer.useGrid ? 'On': 'Off')}
-                ${this.getSubMenuItem('settings>fog',   'Fog',            this.viewer.useFog ? 'On': 'Off')}
-                ${this.getSubMenuItem('settings>debug', 'Debug',          this.viewer.debugPBR || 'None')}
+                ${this.getSubMenuItem('settings>mode',        'Graphics Mode',  this.viewer.forceWebGL2 ? 'WebGL2': 'WebGPU')}
+                ${this.getSubMenuItem('settings>scale',       'Render Scale',   this.viewer.renderScale || 1)}
+                ${this.getSubMenuItem('settings>grid',        'Reference Grid', this.viewer.useGrid ? 'On': 'Off')}
+                ${this.getSubMenuItem('settings>fog',         'Fog',            this.viewer.useFog ? 'On': 'Off')}
+                ${this.getSubMenuItem('settings>motion-blur', 'Motion Blur',    this.viewer.useMotionBlur ? 'On': 'Off')}
+                ${this.getSubMenuItem('settings>aa',          'Anti-Aliasing',  this.viewer.aaMethod || 'None')}
+                ${this.getSubMenuItem('settings>fps',         'Show FPS',       this.viewer.showFPS ? 'On': 'Off')}
+                ${this.getSubMenuItem('settings>debug',       'Debug',          this.viewer.debugPBR || 'None')}
                 `;
                 break;
             }
@@ -364,6 +378,58 @@ class RevGLTFViewerControls extends LitElement {
                 </div>
                 ${this.getSliderMenuItem('Min', 1, 0, 100, fog.range[0], (e) => fog.range[0] = parseFloat(e.target.value))}
                 ${this.getSliderMenuItem('Max', 5, fog.range[0], 500, Math.max(fog.range[0], fog.range[1]), (e) => fog.range[1] = parseFloat(e.target.value))}
+                `;
+                break;
+            }
+
+            case 'settings>motion-blur': {
+                const motionBlur = this.viewer.renderer.settings.motionBlur;
+                content = html`
+                ${this.getBackMenuItem('Motion Blur')}
+                <div class="list">
+                ${this.getCheckMenuItem('On',   this.viewer.useMotionBlur, () => this.viewer.useMotionBlur = true )}
+                ${this.getCheckMenuItem('Off', !this.viewer.useMotionBlur, () => this.viewer.useMotionBlur = false )}
+                </div>
+                ${this.getSliderMenuItem('Scale', 0.1, 0, 1, motionBlur.scale, (e) => motionBlur.scale = parseFloat(e.target.value))}
+                `;
+                break;
+            }
+
+            case 'settings>aa': {
+                content = html`
+                ${this.getBackMenuItem('Anti-Aliasing')}
+                <div class="list">
+                ${this.getCheckMenuItem('None',     this.viewer.aaMethod === 'None',     () => this.viewer.aaMethod = 'None' )}
+                ${this.getCheckMenuItem('MSAA',     this.viewer.aaMethod === 'MSAA',     () => this.viewer.aaMethod = 'MSAA' )}
+                ${this.getCheckMenuItem('TAA',      this.viewer.aaMethod === 'TAA',      () => this.viewer.aaMethod = 'TAA' )}
+                ${this.getCheckMenuItem('MSAA+TAA', this.viewer.aaMethod === 'MSAA+TAA', () => this.viewer.aaMethod = 'MSAA+TAA' )}
+                </div>
+                
+                ${this.viewer.aaMethod.includes('MSAA') ? html`
+                ${this.getSubMenuItem('settings>aa>msaa-samples', 'MSAA Samples', this.viewer.msaaSamples)}
+                ` :''}
+                `;
+                break;
+            }
+
+            case 'settings>aa>msaa-samples': {
+                content = html`
+                ${this.getBackMenuItem('MSAA Samples')}
+                <div class="list">
+                ${this.getCheckMenuItem('2', this.viewer.msaaSamples === 2, () => this.viewer.msaaSamples = 2 )}
+                ${this.getCheckMenuItem('4', this.viewer.msaaSamples === 4, () => this.viewer.msaaSamples = 4 )}
+                </div>
+                `;
+                break;
+            }
+
+            case 'settings>fps': {
+                content = html`
+                ${this.getBackMenuItem('Show FPS')}
+                <div class="list">
+                ${this.getCheckMenuItem('On',  this.viewer.showFPS, () => this.viewer.showFPS = true )}
+                ${this.getCheckMenuItem('Off', !this.viewer.showFPS, () => this.viewer.showFPS = false )}
+                </div>
                 `;
                 break;
             }

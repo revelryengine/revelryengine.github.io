@@ -39,16 +39,22 @@ class RevGLTFViewerElement extends RevParamElement  {
             
             forceWebGL2:    { type: Boolean, param: true, default: false },
             
-            useAudio:       { type: Boolean, param: true, default: true },
-            useEnvironment: { type: Boolean, param: true, default: true },
-            usePunctual:    { type: Boolean, param: true, default: true },
-            useBloom:       { type: Boolean, param: true, default: false },
-            useSSAO:        { type: Boolean, param: true, default: true },
-            useShadows:     { type: Boolean, param: true, default: true },
-            useGrid:        { type: Boolean, param: true, default: false },
-            useFog:         { type: Boolean, param: true, default: false },
-            useLens:        { type: Boolean, param: true, default: false },
+            useTransmission: { type: Boolean, param: true, default: true  },
+            useAudio:        { type: Boolean, param: true, default: true  },
+            useEnvironment:  { type: Boolean, param: true, default: true  },
+            usePunctual:     { type: Boolean, param: true, default: true  },
+            useBloom:        { type: Boolean, param: true, default: true  },
+            useSSAO:         { type: Boolean, param: true, default: true  },
+            useShadows:      { type: Boolean, param: true, default: true  },
 
+            useGrid:         { type: Boolean, param: true, default: false },
+            useFog:          { type: Boolean, param: true, default: false },
+            useMotionBlur:   { type: Boolean, param: true, default: false },
+            useLens:         { type: Boolean, param: true, default: false },
+
+
+            aaMethod:       { type: String, param: true, default: 'MSAA' },
+            msaaSamples:    { type: Number, param: true, default: 4      },
             renderScale:    { type: Number, param: true, default: defaultRenderScale },
             
             sample:      { type: String, param: true, default: 'SciFiHelmet' },
@@ -60,8 +66,11 @@ class RevGLTFViewerElement extends RevParamElement  {
             cameraId:    { type: Number, param: true, default: -1 },
             sceneId:     { type: Number, param: true, default: -1 },
             
+            showFPS:     { type: Boolean, param: true, default: false },
             debugPBR:    { type: String, param: true, default: 'None' },
             debugAABB:   { type: Boolean, param: true, default: false },
+
+            fps: { type: Number },
         }
     }
     
@@ -177,7 +186,8 @@ class RevGLTFViewerElement extends RevParamElement  {
     updated(changedProperties) {
         super.updated(changedProperties);
         
-        if(changedProperties.has('useAudio') 
+        if(changedProperties.has('useTransmission') 
+            || changedProperties.has('useAudio') 
             || changedProperties.has('useEnvironment') 
             || changedProperties.has('usePunctual')
             || changedProperties.has('useBloom') 
@@ -185,8 +195,11 @@ class RevGLTFViewerElement extends RevParamElement  {
             || changedProperties.has('useShadows')
             || changedProperties.has('useGrid')
             || changedProperties.has('useFog')
+            || changedProperties.has('useMotionBlur')
             || changedProperties.has('useLens')
             || changedProperties.has('tonemap')
+            || changedProperties.has('aaMethod')
+            || changedProperties.has('msaaSamples')
             || changedProperties.has('renderScale')
             || changedProperties.has('debugPBR')
             || changedProperties.has('debugAABB')) {
@@ -227,17 +240,38 @@ class RevGLTFViewerElement extends RevParamElement  {
     }
 
     reconcileSettings(settings) {
-        settings.audio.enabled       = this.useAudio;
-        settings.environment.enabled = this.useEnvironment;
-        settings.punctual.enabled    = this.usePunctual;
-        settings.shadows.enabled     = this.useShadows;
-        settings.grid.enabled        = this.useGrid;
-        settings.fog.enabled         = this.useFog;
-        settings.ssao.enabled        = this.useSSAO;
-        settings.lens.enabled        = this.useLens;
-        settings.bloom.enabled       = this.useBloom;
-        settings.tonemap             = this.tonemap;
-        settings.renderScale         = this.renderScale;
+        settings.transmission.enabled = this.useTransmission;
+        settings.audio.enabled        = this.useAudio;
+        settings.environment.enabled  = this.useEnvironment;
+        settings.punctual.enabled     = this.usePunctual;
+        settings.shadows.enabled      = this.useShadows;
+        settings.grid.enabled         = this.useGrid;
+        settings.fog.enabled          = this.useFog;
+        settings.motionBlur.enabled   = this.useMotionBlur;
+        settings.ssao.enabled         = this.useSSAO;
+        settings.lens.enabled         = this.useLens;
+        settings.bloom.enabled        = this.useBloom;
+        settings.tonemap              = this.tonemap;
+
+        switch(this.aaMethod) {
+            case 'MSAA': 
+                settings.msaa.enabled = true;
+                break;
+            case 'TAA':
+                settings.taa.enabled  = true;
+                settings.msaa.enabled = false;
+                break;
+            case 'MSAA+TAA':
+                settings.msaa.enabled = true;
+                settings.taa.enabled  = true;
+                break;
+            default:
+                settings.taa.enabled  = false;
+                settings.msaa.enabled = false;
+        }
+
+        settings.msaa.samples = this.msaaSamples;
+        settings.renderScale  = this.renderScale;
         settings.debug = {
             pbr:  { enabled: this.debugPBR !== 'None', mode: this.debugPBR },
             aabb: { enabled: this.debugAABB },
@@ -252,7 +286,10 @@ class RevGLTFViewerElement extends RevParamElement  {
         
         this.loading = !!(this.loadingSample || this.loadingEnv);
 
+        const fps = this.showFPS ? html`<div class="fps">FPS: ${this.fps}</div>` : ''
+
         return html`
+        ${fps}
         ${this.camera}
         ${this.canvas}
         ${this.vrControl}
@@ -263,9 +300,11 @@ class RevGLTFViewerElement extends RevParamElement  {
     }
     
     renderGLTF(hrTime) {
+        const frameDeltaTime = hrTime - this.lastRenderTime;
+
         if (this.gltfSample) {
             this.animators?.forEach(animator => {
-                animator.update(hrTime - this.lastRenderTime);
+                animator.update(frameDeltaTime);
                 animator.targets.nodes && this.graph.updateNodes(animator.targets.nodes);
                 animator.targets.materials && this.graph.updateMaterials(animator.targets.materials);
             });
@@ -281,6 +320,8 @@ class RevGLTFViewerElement extends RevParamElement  {
             // if(!this.vrControl?.xrSession) this.renderer.render(scene, camera);
         }
         this.lastRenderTime = hrTime;
+
+        this.fps = Math.round(1000 / frameDeltaTime);
         
         this.requestId = requestAnimationFrame(t => this.renderGLTF(t));
     }
@@ -394,7 +435,7 @@ class RevGLTFViewerElement extends RevParamElement  {
         :host {
             display: flex;
             position: relative;
-            background: radial-gradient(var(--primary-dark), var(--primary-light)); /* #303542; */
+            background: #3d3d3d; 
             width: 100%;
             height: 100%;
             align-items: center;
@@ -462,6 +503,12 @@ class RevGLTFViewerElement extends RevParamElement  {
             left: 0;
             right: 0;
             bottom: 20vh;
+        }
+
+        .fps {
+            position: absolute;
+            top: 5px;
+            left: 5px;
         }
         `;
     }

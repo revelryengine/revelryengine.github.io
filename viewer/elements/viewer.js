@@ -43,8 +43,8 @@ class RevGLTFViewerElement extends RevParamElement  {
             useAudio:        { type: Boolean, param: true, default: true  },
             useEnvironment:  { type: Boolean, param: true, default: true  },
             usePunctual:     { type: Boolean, param: true, default: true  },
-            useBloom:        { type: Boolean, param: true, default: true  },
-            useSSAO:         { type: Boolean, param: true, default: true  },
+            useBloom:        { type: Boolean, param: true, default: false },
+            useSSAO:         { type: Boolean, param: true, default: false },
             useShadows:      { type: Boolean, param: true, default: true  },
 
             useGrid:         { type: Boolean, param: true, default: false },

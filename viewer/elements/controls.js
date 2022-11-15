@@ -240,6 +240,9 @@ class RevGLTFViewerControls extends LitElement {
                 ${this.getCheckMenuItem('Off', !this.viewer.useEnvironment, () => this.viewer.useEnvironment = false )}
                 </div>
                 ${this.getSubMenuItem('lighting>environment>environment', 'Environment', this.viewer.environment)}
+                ${this.viewer.useEnvironment ? html`
+                ${this.getSubMenuItem('lighting>environment>skybox', 'Sky Box', this.viewer.useSkybox ? 'On': 'Off')}
+                `: ''}
                 `;
                 break;
             }
@@ -252,6 +255,17 @@ class RevGLTFViewerControls extends LitElement {
                     return this.getCheckMenuItem(name, checked, () => this.viewer.environment = name);
                 })}
                 </div>
+                `;
+                break;
+            }
+            case 'lighting>environment>skybox': {
+                content = html`
+                ${this.getBackMenuItem('Sky Box')}
+                <div class="list">
+                ${this.getCheckMenuItem('On',   this.viewer.useSkybox, () => this.viewer.useSkybox = true )}
+                ${this.getCheckMenuItem('Off', !this.viewer.useSkybox, () => this.viewer.useSkybox = false )}
+                </div>
+                ${this.getSliderMenuItem('Blur', 0.1, 0, 1, this.viewer.skyboxBlur, (e) => this.viewer.skyboxBlur = parseFloat(e.target.value))}
                 `;
                 break;
             }

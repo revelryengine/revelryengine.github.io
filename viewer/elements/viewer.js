@@ -42,6 +42,7 @@ class RevGLTFViewerElement extends RevParamElement  {
             useTransmission: { type: Boolean, param: true, default: true  },
             useAudio:        { type: Boolean, param: true, default: true  },
             useEnvironment:  { type: Boolean, param: true, default: true  },
+            useSkybox:       { type: Boolean, param: true, default: true  },
             usePunctual:     { type: Boolean, param: true, default: true  },
             useBloom:        { type: Boolean, param: true, default: false },
             useSSAO:         { type: Boolean, param: true, default: false },
@@ -56,6 +57,7 @@ class RevGLTFViewerElement extends RevParamElement  {
             aaMethod:       { type: String, param: true, default: 'MSAA' },
             msaaSamples:    { type: Number, param: true, default: 4      },
             renderScale:    { type: Number, param: true, default: defaultRenderScale },
+            skyboxBlur:     { type: Number, param: true, default: 0.5 },
             
             sample:      { type: String, param: true, default: 'SciFiHelmet' },
             variant:     { type: String, param: true, default: 'glTF' },
@@ -188,7 +190,8 @@ class RevGLTFViewerElement extends RevParamElement  {
         
         if(changedProperties.has('useTransmission') 
             || changedProperties.has('useAudio') 
-            || changedProperties.has('useEnvironment') 
+            || changedProperties.has('useEnvironment')
+            || changedProperties.has('useSkybox') 
             || changedProperties.has('usePunctual')
             || changedProperties.has('useBloom') 
             || changedProperties.has('useSSAO') 
@@ -201,6 +204,7 @@ class RevGLTFViewerElement extends RevParamElement  {
             || changedProperties.has('aaMethod')
             || changedProperties.has('msaaSamples')
             || changedProperties.has('renderScale')
+            || changedProperties.has('skyboxBlur')
             || changedProperties.has('debugPBR')
             || changedProperties.has('debugAABB')) {
             if(this.renderer) {
@@ -243,6 +247,7 @@ class RevGLTFViewerElement extends RevParamElement  {
         settings.transmission.enabled = this.useTransmission;
         settings.audio.enabled        = this.useAudio;
         settings.environment.enabled  = this.useEnvironment;
+        settings.skybox.enabled       = this.useSkybox;
         settings.punctual.enabled     = this.usePunctual;
         settings.shadows.enabled      = this.useShadows;
         settings.grid.enabled         = this.useGrid;
@@ -252,7 +257,7 @@ class RevGLTFViewerElement extends RevParamElement  {
         settings.lens.enabled         = this.useLens;
         settings.bloom.enabled        = this.useBloom;
         settings.tonemap              = this.tonemap;
-
+        
         switch(this.aaMethod) {
             case 'MSAA': 
                 settings.msaa.enabled = true;
@@ -272,6 +277,7 @@ class RevGLTFViewerElement extends RevParamElement  {
 
         settings.msaa.samples = this.msaaSamples;
         settings.renderScale  = this.renderScale;
+        settings.skybox.blur  = this.skyboxBlur;
         settings.debug = {
             pbr:  { enabled: this.debugPBR !== 'None', mode: this.debugPBR },
             aabb: { enabled: this.debugAABB },
@@ -507,8 +513,10 @@ class RevGLTFViewerElement extends RevParamElement  {
 
         .fps {
             position: absolute;
-            top: 5px;
-            left: 5px;
+            top: 0px;
+            left: 0px;
+            background: rgba(0,0,0, 0.75);
+            padding: 5px;
         }
         `;
     }

@@ -140,7 +140,7 @@ class RevGLTFViewerElement extends RevParamElement  {
         }
     }
     
-    async createRenderer() {
+    createRenderer() {
         try {
             cancelAnimationFrame(this.requestId);
             this.renderer?.destroy();
@@ -156,7 +156,7 @@ class RevGLTFViewerElement extends RevParamElement  {
 
             console.log('Creating Renderer', settings);
             
-            const renderer = await new Renderer(this.canvas, settings).initialized;
+            const renderer = new Renderer(settings, this.canvas);
             
             this.renderer = renderer;
             this.frustum  = this.renderer.createFrustum();
@@ -177,7 +177,10 @@ class RevGLTFViewerElement extends RevParamElement  {
     }
     async connectedCallback() {
         super.connectedCallback();
-        await this.createRenderer();
+        
+        await Renderer.requestDevice();
+
+        this.createRenderer();
     }
     
     disconnectedCallback() {

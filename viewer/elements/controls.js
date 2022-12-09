@@ -346,7 +346,7 @@ class RevGLTFViewerControls extends LitElement {
                 ${this.getSubMenuItem('settings>fog',         'Fog',            this.viewer.useFog ? 'On': 'Off')}
                 ${this.getSubMenuItem('settings>motion-blur', 'Motion Blur',    this.viewer.useMotionBlur ? 'On': 'Off')}
                 ${this.getSubMenuItem('settings>aa',          'Anti-Aliasing',  this.viewer.aaMethod || 'None')}
-                ${this.getSubMenuItem('settings>fps',         'Show FPS',       this.viewer.showFPS ? 'On': 'Off')}
+                ${this.getSubMenuItem('settings>fps',         'Show Stats',     this.viewer.showStats ? 'On': 'Off')}
                 ${this.getSubMenuItem('settings>debug',       'Debug',          this.viewer.debugPBR || 'None')}
                 `;
                 break;
@@ -441,8 +441,8 @@ class RevGLTFViewerControls extends LitElement {
                 content = html`
                 ${this.getBackMenuItem('Show FPS')}
                 <div class="list">
-                ${this.getCheckMenuItem('On',  this.viewer.showFPS, () => this.viewer.showFPS = true )}
-                ${this.getCheckMenuItem('Off', !this.viewer.showFPS, () => this.viewer.showFPS = false )}
+                ${this.getCheckMenuItem('On',  this.viewer.showStats, () => this.viewer.showStats = true )}
+                ${this.getCheckMenuItem('Off', !this.viewer.showStats, () => this.viewer.showStats = false )}
                 </div>
                 `;
                 break;

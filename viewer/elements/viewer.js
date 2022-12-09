@@ -1,4 +1,5 @@
 import { html, css       } from 'lit';
+import Stats from 'stats';
 import { RevParamElement } from './param.js';
 
 import { Renderer } from 'revelryengine/renderer/lib/renderer.js';
@@ -25,6 +26,7 @@ class RevGLTFViewerElement extends RevParamElement  {
     #abortSample = null;
     #abortEnv    = null;
 
+    #stats;
     static get properties() {
         return {
             loading:       { type: Boolean, reflect: true },
@@ -68,11 +70,9 @@ class RevGLTFViewerElement extends RevParamElement  {
             cameraId:    { type: Number, param: true, default: -1 },
             sceneId:     { type: Number, param: true, default: -1 },
             
-            showFPS:     { type: Boolean, param: true, default: false },
-            debugPBR:    { type: String, param: true, default: 'None' },
-            debugAABB:   { type: Boolean, param: true, default: false },
-
-            fps: { type: Number },
+            showStats:   { type: Boolean, param: true, default: false  },
+            debugPBR:    { type: String,  param: true, default: 'None' },
+            debugAABB:   { type: Boolean, param: true, default: false  },
         }
     }
     
@@ -242,6 +242,11 @@ class RevGLTFViewerElement extends RevParamElement  {
                 this.createRenderer();
             }
         }
+
+        if(changedProperties.has('showStats')) {
+            this.#stats = this.showStats ? new Stats() : null;
+            this.update();
+        }
         
         this.controls.update();
     }
@@ -295,10 +300,8 @@ class RevGLTFViewerElement extends RevParamElement  {
         
         this.loading = !!(this.loadingSample || this.loadingEnv);
 
-        const fps = this.showFPS ? html`<div class="fps">FPS: ${this.fps}</div>` : ''
-
         return html`
-        ${fps}
+        ${this.#stats?.dom ?? ''}
         ${this.camera}
         ${this.canvas}
         ${this.vrControl}
@@ -309,9 +312,10 @@ class RevGLTFViewerElement extends RevParamElement  {
     }
     
     renderGLTF(hrTime) {
-        const frameDeltaTime = hrTime - this.lastRenderTime;
+        this.#stats?.begin();
 
         if (this.gltfSample) {
+            const frameDeltaTime = hrTime - this.lastRenderTime;
             this.animators?.forEach(animator => {
                 animator.update(frameDeltaTime);
                 animator.targets.nodes && this.graph.updateNodes(animator.targets.nodes);
@@ -329,10 +333,10 @@ class RevGLTFViewerElement extends RevParamElement  {
             // if(!this.vrControl?.xrSession) this.renderer.render(scene, camera);
         }
         this.lastRenderTime = hrTime;
-
-        this.fps = Math.round(1000 / frameDeltaTime);
         
+        this.#stats?.end();
         this.requestId = requestAnimationFrame(t => this.renderGLTF(t));
+        
     }
 
     initSample() {

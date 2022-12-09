@@ -14,6 +14,7 @@ element.textContent = JSON.stringify({
         'revelryengine/sample-models/'       : 'https://cdn.jsdelivr.net/gh/revelryengine/sample-models@v0.1.0-alpha/',
         'lit'                                : 'https://cdn.skypack.dev/lit@2.0.2',
         'lit/'                               : 'https://cdn.skypack.dev/lit@2.0.2/',
+        'stats'                              : 'https://cdn.jsdelivr.net/gh/mrdoob/stats.js/build/stats.module.js',
     }
 });
 

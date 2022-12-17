@@ -17,9 +17,6 @@ import './camera.js';
 import './toast.js';
 // import './vr.js';
 
-const samples      = samplesIndex;
-const environments = envIndex.filter(({ format }) => format === 'rgb16float');
-
 const defaultRenderScale = Math.max(0.5, 1 / window.devicePixelRatio);
 
 class RevGLTFViewerElement extends RevParamElement  {
@@ -61,10 +58,14 @@ class RevGLTFViewerElement extends RevParamElement  {
             renderScale:    { type: Number, param: true, default: defaultRenderScale },
             skyboxBlur:     { type: Number, param: true, default: 0.5 },
             
-            sample:      { type: String, param: true, default: 'SciFiHelmet' },
-            variant:     { type: String, param: true, default: 'glTF' },
-            material:    { type: String, param: true, default: '' },
-            environment: { type: String, param: true, default: 'Quattro Canti' },
+            sample:        { type: String, param: true, default: 'SciFiHelmet' },
+            variant:       { type: String, param: true, default: 'glTF' },
+            material:      { type: String, param: true, default: '' },
+
+            envSample:           { type: String,  param: true, default: 'Quattro Canti' },
+            envFormat:           { type: String,  param: true, default: 'rgb9e5ufloat'  },
+            envDeriveIrradiance: { type: Boolean, param: true, default: false           },
+
             tonemap:     { type: String, param: true, default: '' },
             
             cameraId:    { type: Number, param: true, default: -1 },
@@ -110,8 +111,8 @@ class RevGLTFViewerElement extends RevParamElement  {
             }
         });
         
-        this.samples      = samples;
-        this.environments = environments;
+        this.samples      = samplesIndex;
+        this.environments = envIndex;
         
         this.defaultLights = [
             new Node({
@@ -220,7 +221,7 @@ class RevGLTFViewerElement extends RevParamElement  {
             this.loadSample();
         }
 
-        if(changedProperties.has('environment')) {
+        if(changedProperties.has('envSample') || changedProperties.has('envFormat') || changedProperties.has('envDeriveIrradiance')) {
             this.loadEnvironment();
         }
         
@@ -408,11 +409,11 @@ class RevGLTFViewerElement extends RevParamElement  {
     }
 
     async loadEnvironment() {
-        const source = environments.find(({ name }) => name === this.environment)?.gltf;
-
-        if(this.gltfEnv?.$uri === source) return;
+        const env = this.environments.find(({ name }) => name === this.envSample);
+        const source = env.formats[this.envFormat];
 
         try {
+        
             this.#abortEnv?.abort();
             this.#abortEnv = new AbortController();
 
@@ -420,9 +421,14 @@ class RevGLTFViewerElement extends RevParamElement  {
             this.gltfEnv = await GLTF.load(source, this.#abortEnv);
             this.gltfEnv.extensions.KHR_lights_environment.lights[0].extras.sample = true;
 
+            if(this.envDeriveIrradiance) {
+                delete this.gltfEnv.extensions.KHR_lights_environment.lights[0].irradianceCoefficients;
+            }
+
             this.initEnv();
 
             console.log('Environment:', this.gltfEnv);
+            
         } catch(e) {
             if(e.name !== 'AbortError') {
                 this.toast.addMessage(html`Error loading environment`, 3000);

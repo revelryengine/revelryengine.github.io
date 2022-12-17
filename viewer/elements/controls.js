@@ -239,21 +239,45 @@ class RevGLTFViewerControls extends LitElement {
                 ${this.getCheckMenuItem('On',   this.viewer.useEnvironment, () => this.viewer.useEnvironment = true )}
                 ${this.getCheckMenuItem('Off', !this.viewer.useEnvironment, () => this.viewer.useEnvironment = false )}
                 </div>
-                ${this.getSubMenuItem('lighting>environment>environment', 'Environment', this.viewer.environment)}
+                ${this.getSubMenuItem('lighting>environment>sample', 'Environment', this.viewer.envSample)}
                 ${this.viewer.useEnvironment ? html`
                 ${this.getSubMenuItem('lighting>environment>skybox', 'Sky Box', this.viewer.useSkybox ? 'On': 'Off')}
                 `: ''}
                 `;
                 break;
             }
-            case 'lighting>environment>environment': {
+            case 'lighting>environment>sample': {
                 content = html`
                 ${this.getBackMenuItem('Environment')}
+                ${this.getSubMenuItem('lighting>environment>sample>format', 'Format', this.viewer.envFormat)}
+                ${this.getSubMenuItem('lighting>environment>sample>irradiance', 'Force Derrive Irradiance', this.viewer.envDeriveIrradiance ? 'On' : 'Off')}
                 <div class="list">
                 ${this.viewer.environments.map(({ name }) => {
-                    const checked = this.viewer.environment === name;
-                    return this.getCheckMenuItem(name, checked, () => this.viewer.environment = name);
+                    const checked = this.viewer.envSample === name;
+                    return this.getCheckMenuItem(name, checked, () => this.viewer.envSample = name);
                 })}
+                </div>
+                `;
+                break;
+            }
+            case 'lighting>environment>sample>format': {
+                content = html`
+                ${this.getBackMenuItem('Format')}
+                <div class="list">
+                ${Object.keys(this.viewer.environments[0].formats).map((name) => {
+                    const checked = this.viewer.envFormat === name;
+                    return this.getCheckMenuItem(name, checked, () => this.viewer.envFormat = name);
+                })}
+                </div>
+                `;
+                break;
+            }
+            case 'lighting>environment>sample>irradiance': {
+                content = html`
+                ${this.getBackMenuItem('Force Derrive Irradiance')}
+                <div class="list">
+                ${this.getCheckMenuItem('On',   this.viewer.envDeriveIrradiance, () => this.viewer.envDeriveIrradiance = true )}
+                ${this.getCheckMenuItem('Off', !this.viewer.envDeriveIrradiance, () => this.viewer.envDeriveIrradiance = false )}
                 </div>
                 `;
                 break;

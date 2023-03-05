@@ -1,9 +1,11 @@
 import { html, css       } from 'lit';
 import Stats from 'stats';
+
 import { RevParamElement } from './param.js';
 
-import { Renderer } from 'revelryengine/renderer/lib/renderer.js';
-import { mat4     } from 'revelryengine/renderer/deps/gl-matrix.js';
+import { Renderer          } from 'revelryengine/renderer/lib/renderer.js';
+import { CanvasAutoResizer } from 'revelryengine/renderer/lib/utils.js';
+import { mat4              } from 'revelryengine/renderer/deps/gl-matrix.js';
 
 import { GLTF, Node                } from 'revelryengine/gltf/lib/gltf.js';
 import { KHRLightsPunctualLight    } from 'revelryengine/gltf/lib/extensions/KHR_lights_punctual.js';
@@ -140,6 +142,8 @@ class RevGLTFViewerElement extends RevParamElement  {
             extras: { sample: true }
         }
     }
+
+    
     
     createRenderer() {
         try {
@@ -148,8 +152,6 @@ class RevGLTFViewerElement extends RevParamElement  {
 
             const settings = {
                 ...JSON.parse(JSON.stringify(Renderer.defaultSettings)),
-                autoResize  : true,
-                renderScale : this.renderScale,
                 forceWebGL2 : this.forceWebGL2,
             }
 
@@ -176,17 +178,26 @@ class RevGLTFViewerElement extends RevParamElement  {
             this.unsupported = true;
         }
     }
+
+    #autoResizer;
     async connectedCallback() {
         super.connectedCallback();
         
         await Renderer.requestDevice();
 
         this.createRenderer();
+
+        const { canvas, renderScale } = this;
+        
+        this.#autoResizer = new CanvasAutoResizer({ canvas, renderScale, onresize: () => {
+            this.renderer.reconfigure();
+        }});
     }
     
     disconnectedCallback() {
         super.disconnectedCallback();
         cancelAnimationFrame(this.requestId);
+        this.#autoResizer.stop();
     }
     
     updated(changedProperties) {
@@ -207,7 +218,6 @@ class RevGLTFViewerElement extends RevParamElement  {
             || changedProperties.has('tonemap')
             || changedProperties.has('aaMethod')
             || changedProperties.has('msaaSamples')
-            || changedProperties.has('renderScale')
             || changedProperties.has('skyboxBlur')
             || changedProperties.has('debugPBR')
             || changedProperties.has('debugAABB')) {
@@ -216,6 +226,8 @@ class RevGLTFViewerElement extends RevParamElement  {
                 this.renderer.reconfigure();
             }
         }
+
+        
         
         if(changedProperties.has('sample') || changedProperties.has('variant')) {
             this.loadSample();
@@ -247,6 +259,10 @@ class RevGLTFViewerElement extends RevParamElement  {
         if(changedProperties.has('showStats')) {
             this.#stats = this.showStats ? new Stats() : null;
             this.update();
+        }
+
+        if(changedProperties.has('renderScale') && this.#autoResizer) {
+            this.#autoResizer.renderScale = this.renderScale;
         }
         
         this.controls.update();
@@ -285,7 +301,6 @@ class RevGLTFViewerElement extends RevParamElement  {
         }
 
         settings.msaa.samples = this.msaaSamples;
-        settings.renderScale  = this.renderScale;
         settings.skybox.blur  = this.skyboxBlur;
         settings.debug = {
             pbr:  { enabled: this.debugPBR !== 'None', mode: this.debugPBR },
@@ -329,7 +344,7 @@ class RevGLTFViewerElement extends RevParamElement  {
                 this.graph.updateNode(cameraNode);
             }
             
-            this.frustum.update({ graph: this.graph, cameraNode, width: this.renderer.width, height: this.renderer.height });
+            this.frustum.update({ graph: this.graph, cameraNode });
             this.renderer.render(this.graph, this.frustum);
             // if(!this.vrControl?.xrSession) this.renderer.render(scene, camera);
         }
@@ -384,9 +399,9 @@ class RevGLTFViewerElement extends RevParamElement  {
             await this.renderer?.preloadTextures(gltfSample.textures);
 
             if(gltfSample.extensions.KHR_audio) {
-                if(!this.renderer.renderPath.audio.context) {
+                if(!this.renderer.audio.context) {
                     const msg = this.toast.addMessage(html`Sample includes audio.<br>Interact with page to allow sound and finish loading.`, 3000000);
-                    await this.renderer.renderPath.audio.contextPromise;
+                    await this.renderer.audio.contextPromise;
                     this.toast.dismissMessage(msg);
                 }
             }

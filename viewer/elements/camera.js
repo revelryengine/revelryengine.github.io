@@ -180,25 +180,25 @@ export class ViewerCamera extends LitElement {
         this.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
     }
     
+    #up = vec3.create();
+    #right = vec3.create();
     updateInput(hrTime) {   
         const { position, target, input, node, idealDistance } = this;
         const { matrix } = node;
         let { distance, zoom } = this;
         
         // ------Panning-----------
-        const up = vec3.fromValues(matrix[4], matrix[5], matrix[6]);
-        const right = vec3.fromValues(matrix[0], matrix[1], matrix[2]);
+        const up    = vec3.normalize(this.#up,    new Float32Array(matrix.buffer, 16)); // 4, 5, 6 of matrix is up vector
+        const right = vec3.normalize(this.#right, matrix);
         
-        const moveRight = vec3.create();
-        const moveUp = vec3.create();
+        vec3.scale(up, up, input.pan[1]);
+        vec3.scale(right, right, -input.pan[0]);
         
-        vec3.scale(moveRight, right, (vec3.dot(up, RIGHT) + vec3.dot(right, RIGHT)) * -input.pan[0]);
-        vec3.scale(moveUp, up, (vec3.dot(up, UP) + vec3.dot(right, UP)) * input.pan[1]);
+        vec3.add(position, position, up);
+        vec3.add(position, position, right);
         
-        vec3.add(position, position, moveRight);
-        vec3.add(position, position, moveUp);
-        vec3.add(target, target, moveRight);
-        vec3.add(target, target, moveUp);
+        vec3.add(target, target, up);
+        vec3.add(target, target, right);
         
         // ------Orbit-------------
         const offset = vec3.create();
@@ -279,30 +279,31 @@ export class ViewerCamera extends LitElement {
         
         return new XRRigidTransform(
             { x: translation[0], y: translation[1], z: translation[2] },
-            { x: orientation[0], y: orientation[1], z: orientation[2], w: orientation[3] });
-        }
-        
-        focus(x, y) {
-            if(this.renderer.settings?.dof?.enabled){
-                this.focusRing.x = x;
-                this.focusRing.y = y;
-                this.focusRing.active = true;
-                this.input.dof.start = this.renderer.settings.dof.distance;
-                this.input.dof.end   = this.renderer.getDistanceAtPoint(x, this.offsetHeight - y);
-                this.input.dof.time  = performance.now();
-            }
-        }
-        
-        focusCenter() {
-            this.focus(this.offsetWidth / 2, this.offsetHeight / 2);
-        }
-        
-        render() {
-            return html`${this.focusRing}`;
+            { x: orientation[0], y: orientation[1], z: orientation[2], w: orientation[3] }
+        );
+    }
+    
+    focus(x, y) {
+        if(this.renderer.settings?.dof?.enabled){
+            this.focusRing.x = x;
+            this.focusRing.y = y;
+            this.focusRing.active = true;
+            this.input.dof.start = this.renderer.settings.dof.distance;
+            this.input.dof.end   = this.renderer.getDistanceAtPoint(x, this.offsetHeight - y);
+            this.input.dof.time  = performance.now();
         }
     }
     
-    customElements.define('rev-gltf-viewer-camera', ViewerCamera);
+    focusCenter() {
+        this.focus(this.offsetWidth / 2, this.offsetHeight / 2);
+    }
     
-    export default ViewerCamera;
+    render() {
+        return html`${this.focusRing}`;
+    }
+}
+    
+customElements.define('rev-gltf-viewer-camera', ViewerCamera);
+    
+export default ViewerCamera;
     

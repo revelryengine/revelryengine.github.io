@@ -1,7 +1,5 @@
 import { LitElement, html, css } from 'lit';
 
-import './icon.js';
-
 class RevGLTFViewerIcon extends LitElement {
     static get properties() {
         return {

@@ -71,9 +71,7 @@ class FocusRing extends LitElement {
     constructor(){
         super();
         
-        this.addEventListener('animationend', () => {
-            this.active = false;
-        });
+        this.addEventListener('animationend', () => this.active = false);
     }
     
     updated() {

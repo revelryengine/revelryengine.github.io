@@ -19,6 +19,8 @@ import './camera.js';
 import './toast.js';
 // import './vr.js';
 
+await Renderer.requestDevice();
+
 const defaultRenderScale = Math.max(0.5, 1 / window.devicePixelRatio);
 
 class RevGLTFViewerElement extends RevParamElement  {
@@ -182,7 +184,7 @@ class RevGLTFViewerElement extends RevParamElement  {
     #autoResizer;
     async connectedCallback() {
         super.connectedCallback();
-        
+
         await Renderer.requestDevice();
 
         this.createRenderer();
@@ -395,7 +397,7 @@ class RevGLTFViewerElement extends RevParamElement  {
 
             this.loadingSample = true;
 
-            const gltfSample = await GLTF.load(source, this.#abortSample);
+            const gltfSample = await GLTF.load(source, this.#abortSample.signal);
             await this.renderer?.preloadTextures(gltfSample.textures);
 
             if(gltfSample.extensions.KHR_audio) {
@@ -433,7 +435,7 @@ class RevGLTFViewerElement extends RevParamElement  {
             this.#abortEnv = new AbortController();
 
             this.loadingEnv = true;
-            this.gltfEnv = await GLTF.load(source, this.#abortEnv);
+            this.gltfEnv = await GLTF.load(source, this.#abortEnv.signal);
             this.gltfEnv.extensions.KHR_lights_environment.lights[0].extras.sample = true;
 
             if(this.envDeriveIrradiance) {

@@ -41,6 +41,8 @@ class RevGLTFViewerElement extends RevParamElement  {
             gltfEnv:       { type: Object },
             
             forceWebGL2:    { type: Boolean, param: true, default: false },
+
+            alphaBlendMode:  { type: String, param: true, default: 'ordered'},
             
             useTransmission: { type: Boolean, param: true, default: true  },
             useAudio:        { type: Boolean, param: true, default: true  },
@@ -57,7 +59,7 @@ class RevGLTFViewerElement extends RevParamElement  {
             useLens:         { type: Boolean, param: true, default: false },
 
 
-            aaMethod:       { type: String, param: true, default: 'MSAA' },
+            aaMethod:       { type: String, param: true, default: 'msaa' },
             msaaSamples:    { type: Number, param: true, default: 4      },
             renderScale:    { type: Number, param: true, default: defaultRenderScale },
             skyboxBlur:     { type: Number, param: true, default: 0.5 },
@@ -205,7 +207,8 @@ class RevGLTFViewerElement extends RevParamElement  {
     updated(changedProperties) {
         super.updated(changedProperties);
         
-        if(changedProperties.has('useTransmission') 
+        if(changedProperties.has('alphaBlendMode') 
+            || changedProperties.has('useTransmission') 
             || changedProperties.has('useAudio') 
             || changedProperties.has('useEnvironment')
             || changedProperties.has('useSkybox') 
@@ -253,8 +256,14 @@ class RevGLTFViewerElement extends RevParamElement  {
                 const canvas  = document.createElement('canvas');
                 canvas.width  = this.canvas.width;
                 canvas.height = this.canvas.height;
+
                 this.canvas = canvas;
                 this.createRenderer();
+
+                this.#autoResizer?.stop();
+                this.#autoResizer = new CanvasAutoResizer({ canvas, renderScale: this.renderScale, onresize: () => {
+                    this.renderer.reconfigure();
+                }});
             }
         }
 
@@ -271,6 +280,7 @@ class RevGLTFViewerElement extends RevParamElement  {
     }
 
     reconcileSettings(settings) {
+        settings.alphaBlendMode       = this.alphaBlendMode ?? 'ordered';
         settings.transmission.enabled = this.useTransmission;
         settings.audio.enabled        = this.useAudio;
         settings.environment.enabled  = this.useEnvironment;
@@ -284,16 +294,17 @@ class RevGLTFViewerElement extends RevParamElement  {
         settings.lens.enabled         = this.useLens;
         settings.bloom.enabled        = this.useBloom;
         settings.tonemap              = this.tonemap;
+        // settings.passiveInput.enabled = true;
         
         switch(this.aaMethod) {
-            case 'MSAA': 
+            case 'msaa': 
                 settings.msaa.enabled = true;
                 break;
-            case 'TAA':
+            case 'taa':
                 settings.taa.enabled  = true;
                 settings.msaa.enabled = false;
                 break;
-            case 'MSAA+TAA':
+            case 'msaa+taa':
                 settings.msaa.enabled = true;
                 settings.taa.enabled  = true;
                 break;
@@ -360,7 +371,7 @@ class RevGLTFViewerElement extends RevParamElement  {
     initSample() {
         if(!this.gltfSample) return;
 
-        this.graph     = this.renderer.getSceneGraph(this.gltfSample.scene || this.gltfSample.scenes[0]);
+        this.graph     = this.renderer.getSceneGraph(this.gltfSample.scene ?? this.gltfSample.scenes[0]);
         this.animators = this.gltfSample.animations.map(animation => animation.createAnimator());
         
         if(!this.graph.lights.length) {
@@ -459,7 +470,7 @@ class RevGLTFViewerElement extends RevParamElement  {
     activateMaterial() {
         if(!this.material) return this.graph?.setActiveMaterialVariant(null);
 
-        for(const variant of (this.gltfSample?.extensions?.KHR_materials_variants?.variants || [])){
+        for(const variant of (this.gltfSample?.extensions?.KHR_materials_variants?.variants ?? [])){
             if(variant.name === this.material) {
                 return this.graph.setActiveMaterialVariant(variant);
             }

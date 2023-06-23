@@ -60,7 +60,7 @@ export class RevGLTFViewerToast extends LitElement {
 
     render() {
         return html`${repeat(this.messages, ({ id }) => id, ({ content, time }) => {
-            return html`<div class="message" @animationend="${(e) => this.handleAnimationEnd(e)}" style="--time: ${time}ms;">${content || ''}</div>`
+            return html`<div class="message" @animationend="${(e) => this.handleAnimationEnd(e)}" style="--time: ${time}ms;">${content ?? ''}</div>`
         })}`;
     }
 

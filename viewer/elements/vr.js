@@ -61,7 +61,7 @@ class WebGLTFVRControl extends LitElement {
                 }
             }
         }
-        const scene = this.viewer.webgltf.scenes[this.viewer.controls.scene.scene || 0];
+        const scene = this.viewer.webgltf.scenes[this.viewer.controls.scene.scene ?? 0];
         
         this.viewer.animator.update(hrTime - this.lastRenderTime);
         this.viewer.renderer.renderXR(scene, this.xrRefSpace.getOffsetReferenceSpace(this.viewer.camera.getRigidTransform()), xrFrame)

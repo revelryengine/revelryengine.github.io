@@ -22,7 +22,7 @@ class RevGLTFViewerControls extends LitElement {
     
     render() {
         const mode = this.viewer.renderer?.mode;
-        const audio = this.viewer.renderer?.settings.audio || {};
+        const audio = this.viewer.renderer?.settings.audio ?? {};
         const volume = `volume${audio.muted || !audio.enabled ? '-mute' : '-high'}`;
 
         return html`
@@ -166,7 +166,7 @@ class RevGLTFViewerControls extends LitElement {
             }
             
             case 'camera': {
-                const value = this.viewer.gltfSample.nodes[this.viewer.cameraId]?.camera ? this.viewer.gltfSample.nodes[this.viewer.cameraId].name || `#${this.viewer.cameraId}` : 'Orbit Camera';
+                const value = this.viewer.gltfSample.nodes[this.viewer.cameraId]?.camera ? this.viewer.gltfSample.nodes[this.viewer.cameraId].name ?? `#${this.viewer.cameraId}` : 'Orbit Camera';
                 content = html`
                 ${this.getSubMenuItem('camera>camera', 'Camera', value)}
                 ${this.getSubMenuItem('camera>lens',   'Lens Effect', this.viewer.useLens ? 'On': 'Off')}
@@ -187,7 +187,7 @@ class RevGLTFViewerControls extends LitElement {
                 <div class="list">
                 ${cameras.map(({ id, node }) => {
                     const checked = this.viewer.cameraId === id;
-                    return this.getCheckMenuItem(node.name || `#${id}`, checked, () => this.viewer.cameraId = id);
+                    return this.getCheckMenuItem(node.name ?? `#${id}`, checked, () => this.viewer.cameraId = id);
                 })}
                 </div>
                 
@@ -213,12 +213,12 @@ class RevGLTFViewerControls extends LitElement {
             
             case 'lighting': {
                 content = html`
-                ${this.getSubMenuItem('lighting>environment',  'Environment Lighting',           this.viewer.useEnvironment ? 'On': 'Off')}
-                ${this.getSubMenuItem('lighting>punctual',     'Punctual Lighting',              this.viewer.usePunctual    ? 'On': 'Off')}
+                ${this.getSubMenuItem('lighting>environment',  'Environment Lighting',           this.viewer.useEnvironment  ? 'On': 'Off')}
+                ${this.getSubMenuItem('lighting>punctual',     'Punctual Lighting',              this.viewer.usePunctual     ? 'On': 'Off')}
                 ${this.getSubMenuItem('lighting>transmission', 'Transmission',                   this.viewer.useTransmission ? 'On': 'Off')}
-                ${this.getSubMenuItem('lighting>bloom',        'Bloom',                          this.viewer.useBloom       ? 'On': 'Off')}
-                ${this.getSubMenuItem('lighting>ssao',         'Screen Space Ambient Occlusion', this.viewer.useSSAO        ? 'On': 'Off')}
-                ${this.getSubMenuItem('lighting>shadows',      'Shadows',                        this.viewer.useShadows     ? 'On': 'Off')}
+                ${this.getSubMenuItem('lighting>bloom',        'Bloom',                          this.viewer.useBloom        ? 'On': 'Off')}
+                ${this.getSubMenuItem('lighting>ssao',         'Screen Space Ambient Occlusion', this.viewer.useSSAO         ? 'On': 'Off')}
+                ${this.getSubMenuItem('lighting>shadows',      'Shadows',                        this.viewer.useShadows      ? 'On': 'Off')}
                 ${this.getSubMenuItem('lighting>exposure',     'Exposure',                       this.viewer.renderer.settings.exposure)}
                 ${this.getSubMenuItem('lighting>tonemap',      'Tonemap',                        this.viewer.tonemap)}
                 `;
@@ -364,14 +364,15 @@ class RevGLTFViewerControls extends LitElement {
             
             case 'settings': {
                 content = html`
-                ${this.getSubMenuItem('settings>mode',        'Graphics Mode',  this.viewer.forceWebGL2 ? 'WebGL2': 'WebGPU')}
-                ${this.getSubMenuItem('settings>scale',       'Render Scale',   this.viewer.renderScale || 1)}
-                ${this.getSubMenuItem('settings>grid',        'Reference Grid', this.viewer.useGrid ? 'On': 'Off')}
-                ${this.getSubMenuItem('settings>fog',         'Fog',            this.viewer.useFog ? 'On': 'Off')}
-                ${this.getSubMenuItem('settings>motion-blur', 'Motion Blur',    this.viewer.useMotionBlur ? 'On': 'Off')}
-                ${this.getSubMenuItem('settings>aa',          'Anti-Aliasing',  this.viewer.aaMethod || 'None')}
-                ${this.getSubMenuItem('settings>fps',         'Show Stats',     this.viewer.showStats ? 'On': 'Off')}
-                ${this.getSubMenuItem('settings>debug',       'Debug',          this.viewer.debugPBR || 'None')}
+                ${this.getSubMenuItem('settings>mode',        'Graphics Mode',    this.viewer.forceWebGL2 ? 'WebGL2': 'WebGPU')}
+                ${this.getSubMenuItem('settings>scale',       'Render Scale',     this.viewer.renderScale ?? 1)}
+                ${this.getSubMenuItem('settings>alpha',       'Alpha Blend Mode', this.viewer.alphaBlendMode ?? 'ordered')}
+                ${this.getSubMenuItem('settings>grid',        'Reference Grid',   this.viewer.useGrid ? 'On': 'Off')}
+                ${this.getSubMenuItem('settings>fog',         'Fog',              this.viewer.useFog ? 'On': 'Off')}
+                ${this.getSubMenuItem('settings>motion-blur', 'Motion Blur',      this.viewer.useMotionBlur ? 'On': 'Off')}
+                ${this.getSubMenuItem('settings>aa',          'Anti-Aliasing',    this.viewer.aaMethod ?? 'None')}
+                ${this.getSubMenuItem('settings>fps',         'Show Stats',       this.viewer.showStats ? 'On': 'Off')}
+                ${this.getSubMenuItem('settings>debug',       'Debug',            this.viewer.debugPBR ?? 'None')}
                 `;
                 break;
             }
@@ -390,6 +391,16 @@ class RevGLTFViewerControls extends LitElement {
                 ${this.getBackMenuItem('Render Scale')}
                 <div class="list">
                 ${this.getSliderMenuItem('Scale', 0.25, 0.25, 2, this.viewer.renderScale, (e) => this.viewer.renderScale = parseFloat(e.target.value))}
+                </div>
+                `;
+                break;
+            }
+            case 'settings>alpha': {
+                content = html`
+                ${this.getBackMenuItem('Alpha Blend Mode')}
+                <div class="list">
+                ${this.getCheckMenuItem('Ordered',        this.viewer.alphaBlendMode === 'ordered',  () => this.viewer.alphaBlendMode = 'ordered' )}
+                ${this.getCheckMenuItem('Weighted (OIT)', this.viewer.alphaBlendMode === 'weighted', () => this.viewer.alphaBlendMode = 'weighted' )}
                 </div>
                 `;
                 break;
@@ -437,10 +448,10 @@ class RevGLTFViewerControls extends LitElement {
                 content = html`
                 ${this.getBackMenuItem('Anti-Aliasing')}
                 <div class="list">
-                ${this.getCheckMenuItem('None',     this.viewer.aaMethod === 'None',     () => this.viewer.aaMethod = 'None' )}
-                ${this.getCheckMenuItem('MSAA',     this.viewer.aaMethod === 'MSAA',     () => this.viewer.aaMethod = 'MSAA' )}
-                ${this.getCheckMenuItem('TAA',      this.viewer.aaMethod === 'TAA',      () => this.viewer.aaMethod = 'TAA' )}
-                ${this.getCheckMenuItem('MSAA+TAA', this.viewer.aaMethod === 'MSAA+TAA', () => this.viewer.aaMethod = 'MSAA+TAA' )}
+                ${this.getCheckMenuItem('None',       this.viewer.aaMethod === 'none',     () => this.viewer.aaMethod = 'none' )}
+                ${this.getCheckMenuItem('MSAA',       this.viewer.aaMethod === 'msaa',     () => this.viewer.aaMethod = 'msaa' )}
+                ${this.getCheckMenuItem('TAA',        this.viewer.aaMethod === 'taa',      () => this.viewer.aaMethod = 'taa' )}
+                ${this.getCheckMenuItem('MSAA + TAA', this.viewer.aaMethod === 'msaa+taa', () => this.viewer.aaMethod = 'msaa+taa' )}
                 </div>
                 
                 ${this.viewer.aaMethod.includes('MSAA') ? html`
@@ -546,7 +557,7 @@ class RevGLTFViewerControls extends LitElement {
         return html`
         <div class="item slider">
         <div class="label">${label}</div>
-        <input type="range" step="${step}" min="${min}" max="${max}" value="${value}" @input="${(e) => action(e) && this.update()}"/><output>${display || value.toFixed(2)}</output>
+        <input type="range" step="${step}" min="${min}" max="${max}" value="${value}" @input="${(e) => action(e) && this.update()}"/><output>${display ?? value.toFixed(2)}</output>
         </div>`;
     }
     

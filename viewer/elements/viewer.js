@@ -19,6 +19,8 @@ import './camera.js';
 import './toast.js';
 // import './vr.js';
 
+import 'revelryengine/renderer/lib/render-paths/wireframe/wireframe.js';
+
 await Renderer.requestDevice();
 
 const defaultRenderScale = Math.max(0.5, 1 / window.devicePixelRatio);
@@ -41,6 +43,7 @@ class RevGLTFViewerElement extends RevParamElement  {
             gltfEnv:       { type: Object },
             
             forceWebGL2:    { type: Boolean, param: true, default: false },
+            renderPath:     { type: String, param: true, default: 'standard'},
 
             alphaBlendMode:  { type: String, param: true, default: 'ordered'},
             
@@ -147,7 +150,21 @@ class RevGLTFViewerElement extends RevParamElement  {
         }
     }
 
-    
+    get settings() {
+        return {
+            standard: this.renderer?.renderPaths.standard.settings,
+            wireframe: this.renderer?.renderPaths.wireframe.settings,
+        };
+    }
+
+    #defaultSettings = {
+        standard: structuredClone(Renderer.renderPathRegistry.get('standard').Settings.defaults),
+        wireframe: structuredClone(Renderer.renderPathRegistry.get('wireframe').Settings.defaults),
+    };
+
+    get defaultSettings() {
+        return this.#defaultSettings;
+    }
     
     createRenderer() {
         try {
@@ -155,15 +172,14 @@ class RevGLTFViewerElement extends RevParamElement  {
             this.renderer?.destroy();
 
             const settings = {
-                ...JSON.parse(JSON.stringify(Renderer.defaultSettings)),
                 forceWebGL2 : this.forceWebGL2,
+                target: this.canvas,
+                renderPathSettings: this.reconcileSettings(this.defaultSettings)
             }
-
-            this.reconcileSettings(settings);
 
             console.log('Creating Renderer', settings);
             
-            const renderer = new Renderer(settings, this.canvas);
+            const renderer = new Renderer(settings);
             
             this.renderer = renderer;
             this.frustum  = this.renderer.createFrustum();
@@ -194,7 +210,7 @@ class RevGLTFViewerElement extends RevParamElement  {
         const { canvas, renderScale } = this;
         
         this.#autoResizer = new CanvasAutoResizer({ canvas, renderScale, onresize: () => {
-            this.renderer.reconfigure();
+            this.renderer.reconfigure(this.settings);
         }});
     }
     
@@ -227,13 +243,10 @@ class RevGLTFViewerElement extends RevParamElement  {
             || changedProperties.has('debugPBR')
             || changedProperties.has('debugAABB')) {
             if(this.renderer) {
-                this.reconcileSettings(this.renderer.settings);
-                this.renderer.reconfigure();
+                this.renderer.reconfigure(this.reconcileSettings(this.settings));
             }
         }
 
-        
-        
         if(changedProperties.has('sample') || changedProperties.has('variant')) {
             this.loadSample();
         }
@@ -262,7 +275,7 @@ class RevGLTFViewerElement extends RevParamElement  {
 
                 this.#autoResizer?.stop();
                 this.#autoResizer = new CanvasAutoResizer({ canvas, renderScale: this.renderScale, onresize: () => {
-                    this.renderer.reconfigure();
+                    this.renderer.reconfigure({ standard: this.settings });
                 }});
             }
         }
@@ -280,45 +293,59 @@ class RevGLTFViewerElement extends RevParamElement  {
     }
 
     reconcileSettings(settings) {
-        settings.alphaBlendMode       = this.alphaBlendMode ?? 'ordered';
-        settings.transmission.enabled = this.useTransmission;
-        settings.audio.enabled        = this.useAudio;
-        settings.environment.enabled  = this.useEnvironment;
-        settings.skybox.enabled       = this.useSkybox;
-        settings.punctual.enabled     = this.usePunctual;
-        settings.shadows.enabled      = this.useShadows;
-        settings.grid.enabled         = this.useGrid;
-        settings.fog.enabled          = this.useFog;
-        settings.motionBlur.enabled   = this.useMotionBlur;
-        settings.ssao.enabled         = this.useSSAO;
-        settings.lens.enabled         = this.useLens;
-        settings.bloom.enabled        = this.useBloom;
-        settings.tonemap              = this.tonemap;
-        // settings.passiveInput.enabled = true;
-        
-        switch(this.aaMethod) {
-            case 'msaa': 
-                settings.msaa.enabled = true;
-                break;
-            case 'taa':
-                settings.taa.enabled  = true;
-                settings.msaa.enabled = false;
-                break;
-            case 'msaa+taa':
-                settings.msaa.enabled = true;
-                settings.taa.enabled  = true;
-                break;
-            default:
-                settings.taa.enabled  = false;
-                settings.msaa.enabled = false;
-        }
+        const { standard, wireframe } = settings;
 
-        settings.msaa.samples = this.msaaSamples;
-        settings.skybox.blur  = this.skyboxBlur;
-        settings.debug = {
+        standard.alphaBlendMode       = this.alphaBlendMode ?? 'ordered';
+        standard.transmission.enabled = this.useTransmission;
+        standard.audio.enabled        = this.useAudio;
+        standard.environment.enabled  = this.useEnvironment;
+        standard.skybox.enabled       = this.useSkybox;
+        standard.punctual.enabled     = this.usePunctual;
+        standard.shadows.enabled      = this.useShadows;
+        standard.fog.enabled          = this.useFog;
+        standard.motionBlur.enabled   = this.useMotionBlur;
+        standard.ssao.enabled         = this.useSSAO;
+        standard.lens.enabled         = this.useLens;
+        standard.bloom.enabled        = this.useBloom;
+        standard.tonemap              = this.tonemap;
+        standard.skybox.blur          = this.skyboxBlur;
+        standard.debug = {
             pbr:  { enabled: this.debugPBR !== 'None', mode: this.debugPBR },
             aabb: { enabled: this.debugAABB },
         }
+
+        standard.grid.enabled  = this.useGrid;
+        wireframe.grid.enabled = this.useGrid;
+
+        switch(this.aaMethod) {
+            case 'msaa': 
+                standard.msaa.enabled  = true;
+                wireframe.msaa.enabled = true;
+                break;
+            case 'taa':
+                standard.taa.enabled   = true;
+                standard.msaa.enabled  = false;
+                wireframe.taa.enabled  = true;
+                wireframe.msaa.enabled = false;
+                break;
+            case 'msaa+taa':
+                standard.msaa.enabled  = true;
+                standard.taa.enabled   = true;
+                wireframe.msaa.enabled = true;
+                wireframe.taa.enabled  = true;
+                
+                break;
+            default:
+                standard.taa.enabled   = false;
+                standard.msaa.enabled  = false;
+                wireframe.msaa.enabled = false;
+                wireframe.taa.enabled  = false;
+        }
+
+        standard.msaa.samples  = this.msaaSamples;
+        wireframe.msaa.samples = this.msaaSamples;
+
+        return settings;
     }
     
     render(){
@@ -357,8 +384,8 @@ class RevGLTFViewerElement extends RevParamElement  {
                 this.graph.updateNode(cameraNode);
             }
             
-            this.frustum.update({ graph: this.graph, cameraNode });
-            this.renderer.render(this.graph, this.frustum);
+            this.frustum.update({ graph: this.graph, cameraNode, jitter: this.settings.temporal });
+            this.renderer.render(this.graph, this.frustum, this.renderPath);
             // if(!this.vrControl?.xrSession) this.renderer.render(scene, camera);
         }
         this.lastRenderTime = hrTime;

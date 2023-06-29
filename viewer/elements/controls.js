@@ -22,7 +22,7 @@ class RevGLTFViewerControls extends LitElement {
     
     render() {
         const mode = this.viewer.renderer?.mode;
-        const audio = this.viewer.renderer?.settings.audio ?? {};
+        const audio = this.viewer.settings?.standard?.audio ?? {};
         const volume = `volume${audio.muted || !audio.enabled ? '-mute' : '-high'}`;
 
         return html`
@@ -34,10 +34,10 @@ class RevGLTFViewerControls extends LitElement {
         <rev-gltf-viewer-icon name="question-circle" type="far" @click="${() => this.closeMenu()}"></rev-gltf-viewer-icon>
         
         <rev-gltf-viewer-icon name="cog"       @click="${() => this.openMenu('settings')}"></rev-gltf-viewer-icon>
-        <rev-gltf-viewer-icon name="lightbulb" @click="${() => this.openMenu('lighting')}"></rev-gltf-viewer-icon>
+        <rev-gltf-viewer-icon name="lightbulb" @click="${() => this.openMenu('lighting')}" ?disabled="${this.viewer.renderPath !== 'standard'}"></rev-gltf-viewer-icon>
         <rev-gltf-viewer-icon name="camera"    @click="${() => this.openMenu('camera')}"></rev-gltf-viewer-icon>
         <rev-gltf-viewer-icon name="cube"      @click="${() => this.openMenu('model')}"></rev-gltf-viewer-icon>
-        <rev-gltf-viewer-icon name="${volume}" @click="${() => this.openMenu('volume')}"></rev-gltf-viewer-icon>
+        <rev-gltf-viewer-icon name="${volume}" @click="${() => this.openMenu('volume')}" ?disabled="${this.viewer.renderPath !== 'standard'}"></rev-gltf-viewer-icon>
 
         <rev-gltf-viewer-icon name="vr-cardboard" @click="${this.toggleXR}" disabled></rev-gltf-viewer-icon>
         <rev-gltf-viewer-icon name="${this.fullscreen ? 'compress': 'expand'}" @click="${this.toggleFullscreen}"></rev-gltf-viewer-icon>
@@ -169,7 +169,7 @@ class RevGLTFViewerControls extends LitElement {
                 const value = this.viewer.gltfSample.nodes[this.viewer.cameraId]?.camera ? this.viewer.gltfSample.nodes[this.viewer.cameraId].name ?? `#${this.viewer.cameraId}` : 'Orbit Camera';
                 content = html`
                 ${this.getSubMenuItem('camera>camera', 'Camera', value)}
-                ${this.getSubMenuItem('camera>lens',   'Lens Effect', this.viewer.useLens ? 'On': 'Off')}
+                ${this.getSubMenuItem('camera>lens',   'Lens Effect', this.viewer.useLens ? 'On': 'Off', this.viewer.renderPath !== 'standard')}
                 `;
                 break;
             }
@@ -196,7 +196,7 @@ class RevGLTFViewerControls extends LitElement {
             }
 
             case 'camera>lens': {
-                const lens = this.viewer.renderer.settings.lens;
+                const lens = this.viewer.settings.standard.lens;
                 content = html`
                 ${this.getBackMenuItem('Lens Effect')}
                 <div class="list">
@@ -219,13 +219,13 @@ class RevGLTFViewerControls extends LitElement {
                 ${this.getSubMenuItem('lighting>bloom',        'Bloom',                          this.viewer.useBloom        ? 'On': 'Off')}
                 ${this.getSubMenuItem('lighting>ssao',         'Screen Space Ambient Occlusion', this.viewer.useSSAO         ? 'On': 'Off')}
                 ${this.getSubMenuItem('lighting>shadows',      'Shadows',                        this.viewer.useShadows      ? 'On': 'Off')}
-                ${this.getSubMenuItem('lighting>exposure',     'Exposure',                       this.viewer.renderer.settings.exposure)}
+                ${this.getSubMenuItem('lighting>exposure',     'Exposure',                       this.viewer.settings.standard.exposure)}
                 ${this.getSubMenuItem('lighting>tonemap',      'Tonemap',                        this.viewer.tonemap)}
                 `;
                 break;
             }
             case 'lighting>exposure': {
-                const { settings } = this.viewer.renderer;
+                const { settings } = this.viewer;
                 content = html`
                 ${this.getBackMenuItem('Exposure')}
                 ${this.getSliderMenuItem('Exposure', 0.1, 0.1, 5, settings.exposure, (e) => settings.exposure = parseFloat(e.target.value))}
@@ -314,7 +314,7 @@ class RevGLTFViewerControls extends LitElement {
                 break;
             }
             case 'lighting>bloom': {
-                const bloom = this.viewer.renderer.settings.bloom;
+                const bloom = this.viewer.settings.standard.bloom;
                 content = html`
                 ${this.getBackMenuItem('Bloom')}
                 <div class="list">
@@ -338,7 +338,7 @@ class RevGLTFViewerControls extends LitElement {
                 break;
             }
             case 'lighting>shadows': {
-                const shadows = this.viewer.renderer.settings.shadows;
+                const shadows = this.viewer.settings.standard.shadows;
                 content = html`
                 ${this.getBackMenuItem('Shadows')}
                 <div class="list">
@@ -366,13 +366,15 @@ class RevGLTFViewerControls extends LitElement {
                 content = html`
                 ${this.getSubMenuItem('settings>mode',        'Graphics Mode',    this.viewer.forceWebGL2 ? 'WebGL2': 'WebGPU')}
                 ${this.getSubMenuItem('settings>scale',       'Render Scale',     this.viewer.renderScale ?? 1)}
-                ${this.getSubMenuItem('settings>alpha',       'Alpha Blend Mode', this.viewer.alphaBlendMode ?? 'ordered')}
+                ${this.getSubMenuItem('settings>path',        'Render Path',      this.viewer.renderPath ?? 'standard')}
                 ${this.getSubMenuItem('settings>grid',        'Reference Grid',   this.viewer.useGrid ? 'On': 'Off')}
-                ${this.getSubMenuItem('settings>fog',         'Fog',              this.viewer.useFog ? 'On': 'Off')}
-                ${this.getSubMenuItem('settings>motion-blur', 'Motion Blur',      this.viewer.useMotionBlur ? 'On': 'Off')}
                 ${this.getSubMenuItem('settings>aa',          'Anti-Aliasing',    this.viewer.aaMethod ?? 'None')}
-                ${this.getSubMenuItem('settings>fps',         'Show Stats',       this.viewer.showStats ? 'On': 'Off')}
-                ${this.getSubMenuItem('settings>debug',       'Debug',            this.viewer.debugPBR ?? 'None')}
+
+                ${this.getSubMenuItem('settings>alpha',       'Alpha Blend Mode', this.viewer.alphaBlendMode ?? 'ordered', this.viewer.renderPath !== 'standard')}
+                ${this.getSubMenuItem('settings>fog',         'Fog',              this.viewer.useFog ? 'On': 'Off',        this.viewer.renderPath !== 'standard')}
+                ${this.getSubMenuItem('settings>motion-blur', 'Motion Blur',      this.viewer.useMotionBlur ? 'On': 'Off', this.viewer.renderPath !== 'standard')}
+                ${this.getSubMenuItem('settings>fps',         'Show Stats',       this.viewer.showStats ? 'On': 'Off',     this.viewer.renderPath !== 'standard')}
+                ${this.getSubMenuItem('settings>debug',       'Debug',            this.viewer.debugPBR ?? 'None',          this.viewer.renderPath !== 'standard')}
                 `;
                 break;
             }
@@ -382,6 +384,16 @@ class RevGLTFViewerControls extends LitElement {
                 <div class="list">
                 ${this.getCheckMenuItem('WebGPU', !this.viewer.forceWebGL2, () => this.viewer.forceWebGL2 = false )}
                 ${this.getCheckMenuItem('WebGL2',  this.viewer.forceWebGL2, () => this.viewer.forceWebGL2 = true )}
+                </div>
+                `;
+                break;
+            }
+            case 'settings>path': {
+                content = html`
+                ${this.getBackMenuItem('Render Path')}
+                <div class="list">
+                ${this.getCheckMenuItem('Standard',  this.viewer.renderPath == 'standard',  () => this.viewer.renderPath = 'standard' )}
+                ${this.getCheckMenuItem('Wireframe', this.viewer.renderPath == 'wireframe', () => this.viewer.renderPath = 'wireframe' )}
                 </div>
                 `;
                 break;
@@ -406,19 +418,17 @@ class RevGLTFViewerControls extends LitElement {
                 break;
             }
             case 'settings>grid': {
-                const grid = this.viewer.renderer.settings.grid;
                 content = html`
                 ${this.getBackMenuItem('Reference Grid')}
                 <div class="list">
                 ${this.getCheckMenuItem('On',   this.viewer.useGrid, () => this.viewer.useGrid = true )}
                 ${this.getCheckMenuItem('Off', !this.viewer.useGrid, () => this.viewer.useGrid = false )}
                 </div>
-                ${this.getSliderMenuItem('Increment', 1, -3, 2, Math.log10(grid.increment), (e) => grid.increment = 10 ** parseFloat(e.target.value), grid.increment.toFixed(3))}
                 `;
                 break;
             }
             case 'settings>fog': {
-                const fog = this.viewer.renderer.settings.fog;
+                const fog = this.viewer.settings.standard.fog;
                 content = html`
                 ${this.getBackMenuItem('Fog')}
                 <div class="list">
@@ -432,7 +442,7 @@ class RevGLTFViewerControls extends LitElement {
             }
 
             case 'settings>motion-blur': {
-                const motionBlur = this.viewer.renderer.settings.motionBlur;
+                const motionBlur = this.viewer.settings.standard.motionBlur;
                 content = html`
                 ${this.getBackMenuItem('Motion Blur')}
                 <div class="list">
@@ -508,7 +518,7 @@ class RevGLTFViewerControls extends LitElement {
             }
 
             case 'volume': {
-                const { audio } = this.viewer.renderer.settings;
+                const { audio } = this.viewer.settings.standard;
                 content = html`
                 <div class="list">
                 ${this.getCheckMenuItem('On',   this.viewer.useAudio, () => this.viewer.useAudio = true )}
@@ -721,6 +731,10 @@ class RevGLTFViewerControls extends LitElement {
         .menu .item.slider output {
             min-width: 7ch;
             text-align: right;
+        }
+
+        rev-gltf-viewer-icon[disabled] {
+            pointer-events: none;
         }
         `;
     }

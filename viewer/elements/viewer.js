@@ -20,6 +20,8 @@ import './toast.js';
 // import './vr.js';
 
 import 'revelryengine/renderer/lib/render-paths/wireframe/wireframe.js';
+import 'revelryengine/renderer/lib/render-paths/preview/preview.js';
+import 'revelryengine/renderer/lib/render-paths/solid/solid.js';
 
 await Renderer.requestDevice();
 
@@ -152,13 +154,17 @@ class RevGLTFViewerElement extends RevParamElement  {
 
     get settings() {
         return {
-            standard: this.renderer?.renderPaths.standard.settings,
+            standard:  this.renderer?.renderPaths.standard.settings,
+            solid:     this.renderer?.renderPaths.solid.settings,
+            preview:   this.renderer?.renderPaths.preview.settings,
             wireframe: this.renderer?.renderPaths.wireframe.settings,
         };
     }
 
     #defaultSettings = {
-        standard: structuredClone(Renderer.renderPathRegistry.get('standard').Settings.defaults),
+        standard:  structuredClone(Renderer.renderPathRegistry.get('standard').Settings.defaults),
+        solid:     structuredClone(Renderer.renderPathRegistry.get('solid').Settings.defaults),
+        preview:   structuredClone(Renderer.renderPathRegistry.get('preview').Settings.defaults),
         wireframe: structuredClone(Renderer.renderPathRegistry.get('wireframe').Settings.defaults),
     };
 
@@ -293,7 +299,7 @@ class RevGLTFViewerElement extends RevParamElement  {
     }
 
     reconcileSettings(settings) {
-        const { standard, wireframe } = settings;
+        const { standard } = settings;
 
         standard.alphaBlendMode       = this.alphaBlendMode ?? 'ordered';
         standard.transmission.enabled = this.useTransmission;
@@ -314,36 +320,28 @@ class RevGLTFViewerElement extends RevParamElement  {
             aabb: { enabled: this.debugAABB },
         }
 
-        standard.grid.enabled  = this.useGrid;
-        wireframe.grid.enabled = this.useGrid;
-
-        switch(this.aaMethod) {
-            case 'msaa': 
-                standard.msaa.enabled  = true;
-                wireframe.msaa.enabled = true;
-                break;
-            case 'taa':
-                standard.taa.enabled   = true;
-                standard.msaa.enabled  = false;
-                wireframe.taa.enabled  = true;
-                wireframe.msaa.enabled = false;
-                break;
-            case 'msaa+taa':
-                standard.msaa.enabled  = true;
-                standard.taa.enabled   = true;
-                wireframe.msaa.enabled = true;
-                wireframe.taa.enabled  = true;
-                
-                break;
-            default:
-                standard.taa.enabled   = false;
-                standard.msaa.enabled  = false;
-                wireframe.msaa.enabled = false;
-                wireframe.taa.enabled  = false;
+        for(const path of Object.values(settings)) {
+            path.grid.enabled = this.useGrid;
+            switch(this.aaMethod) {
+                case 'msaa': 
+                    path.msaa.enabled = true;
+                    break;
+                case 'taa':
+                    path.taa.enabled  = true;
+                    path.msaa.enabled = false;
+                    break;
+                case 'msaa+taa':
+                    path.msaa.enabled = true;
+                    path.taa.enabled  = true;
+                    break;
+                default:
+                    path.taa.enabled  = false;
+                    path.msaa.enabled = false;
+            }
+    
+            path.msaa.samples = this.msaaSamples;
+            
         }
-
-        standard.msaa.samples  = this.msaaSamples;
-        wireframe.msaa.samples = this.msaaSamples;
 
         return settings;
     }
@@ -384,8 +382,10 @@ class RevGLTFViewerElement extends RevParamElement  {
                 this.graph.updateNode(cameraNode);
             }
             
-            this.frustum.update({ graph: this.graph, cameraNode, jitter: this.settings.temporal });
-            this.renderer.render(this.graph, this.frustum, this.renderPath);
+            const { graph, frustum, renderPath } = this;
+
+            this.frustum.update({ graph, cameraNode, jitter: this.settings[this.renderPath].temporal });
+            this.renderer.render({ graph, frustum, renderPath });
             // if(!this.vrControl?.xrSession) this.renderer.render(scene, camera);
         }
         this.lastRenderTime = hrTime;

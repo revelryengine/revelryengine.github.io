@@ -373,7 +373,7 @@ class RevGLTFViewerControls extends LitElement {
                 ${this.getSubMenuItem('settings>alpha',       'Alpha Blend Mode', this.viewer.alphaBlendMode ?? 'ordered', this.viewer.renderPath !== 'standard')}
                 ${this.getSubMenuItem('settings>fog',         'Fog',              this.viewer.useFog ? 'On': 'Off',        this.viewer.renderPath !== 'standard')}
                 ${this.getSubMenuItem('settings>motion-blur', 'Motion Blur',      this.viewer.useMotionBlur ? 'On': 'Off', this.viewer.renderPath !== 'standard')}
-                ${this.getSubMenuItem('settings>fps',         'Show Stats',       this.viewer.showStats ? 'On': 'Off',     this.viewer.renderPath !== 'standard')}
+                ${this.getSubMenuItem('settings>fps',         'Show Stats',       this.viewer.showStats ? 'On': 'Off')}
                 ${this.getSubMenuItem('settings>debug',       'Debug',            this.viewer.debugPBR ?? 'None',          this.viewer.renderPath !== 'standard')}
                 `;
                 break;
@@ -392,8 +392,10 @@ class RevGLTFViewerControls extends LitElement {
                 content = html`
                 ${this.getBackMenuItem('Render Path')}
                 <div class="list">
-                ${this.getCheckMenuItem('Standard',  this.viewer.renderPath == 'standard',  () => this.viewer.renderPath = 'standard' )}
                 ${this.getCheckMenuItem('Wireframe', this.viewer.renderPath == 'wireframe', () => this.viewer.renderPath = 'wireframe' )}
+                ${this.getCheckMenuItem('Solid',     this.viewer.renderPath == 'solid',     () => this.viewer.renderPath = 'solid' )}
+                ${this.getCheckMenuItem('Preview',   this.viewer.renderPath == 'preview',   () => this.viewer.renderPath = 'preview' )}
+                ${this.getCheckMenuItem('Standard',  this.viewer.renderPath == 'standard',  () => this.viewer.renderPath = 'standard' )}
                 </div>
                 `;
                 break;

@@ -19,9 +19,9 @@ import './camera.js';
 import './toast.js';
 // import './vr.js';
 
-import 'revelryengine/renderer/lib/render-paths/wireframe/wireframe.js';
-import 'revelryengine/renderer/lib/render-paths/preview/preview.js';
-import 'revelryengine/renderer/lib/render-paths/solid/solid.js';
+import 'revelryengine/renderer/lib/render-paths/wireframe/wireframe-path.js';
+import 'revelryengine/renderer/lib/render-paths/preview/preview-path.js';
+import 'revelryengine/renderer/lib/render-paths/solid/solid-path.js';
 
 await Renderer.requestDevice();
 
@@ -401,7 +401,7 @@ class RevGLTFViewerElement extends RevParamElement  {
         this.graph     = this.renderer.getSceneGraph(this.gltfSample.scene ?? this.gltfSample.scenes[0]);
         this.animators = this.gltfSample.animations.map(animation => animation.createAnimator());
         
-        if(!this.graph.lights.length) {
+        if(!this.graph.lights.size) {
             this.graph.scene.nodes.push(...this.defaultLights);
             this.graph.updateNodes(new Set(this.defaultLights));
         }

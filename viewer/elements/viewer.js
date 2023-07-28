@@ -450,6 +450,8 @@ class RevGLTFViewerElement extends RevParamElement  {
             this.initSample();
 
             this.camera.resetToScene(this.graph);
+
+            await this.renderer?.precompile(this.graph);
             
             this.toast.addMessage(html`Drag to Rotate<br>Scroll/Pinch to Zoom`, 3000);
 

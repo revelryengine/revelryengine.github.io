@@ -1,4 +1,4 @@
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css } from '../../deps/lit.js';
 
 import './icon.js';
 
@@ -9,7 +9,7 @@ class RevGLTFViewerFAB extends LitElement {
             disabled: { type: Boolean, reflect: true },
         }
     }
-    
+
     static get styles() {
         return css`
         :host {
@@ -28,16 +28,16 @@ class RevGLTFViewerFAB extends LitElement {
             transition: all 0.3s cubic-bezier(.25,.8,.25,1);
             user-select: none;
         }
-        
+
         :host(:hover) {
             background-color: var(--mono-shade2);
             box-shadow: var(--card-shadow-2);
         }
-        
+
         :host(:hover:active) {
             background-color: var(--mono-shade1);
         }
-        
+
         :host([disabled]) {
             cursor: default;
             pointer-events: none;
@@ -46,7 +46,7 @@ class RevGLTFViewerFAB extends LitElement {
         }
         `;
     }
-    
+
     render(){
         return html`
         <rev-gltf-viewer-icon name="${this.icon}"></rev-gltf-viewer-icon>

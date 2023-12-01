@@ -1,8 +1,8 @@
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css } from '../../deps/lit.js';
 
 import './fab.js';
 
-import { PBR_DEBUG_MODES } from 'revelryengine/renderer/lib/constants.js';
+import { PBR_DEBUG_MODES } from '../../deps/revelry.js';
 
 class RevGLTFViewerControls extends LitElement {
     static get properties() {
@@ -13,30 +13,31 @@ class RevGLTFViewerControls extends LitElement {
             menus:      { type: Array   },
         }
     }
-    
+
     connectedCallback() {
         super.connectedCallback();
         this.viewer = this.parentNode.host;
         this.menu = '';
     }
-    
+
     render() {
         const mode = this.viewer.renderer?.mode;
         const audio = this.viewer.settings?.standard?.audio ?? {};
-        const volume = `volume${audio.muted || !audio.enabled ? '-mute' : '-high'}`;
+        const volume = `volume${audio.muted || !this.viewer.settings?.standard?.enabled.audio ? '-mute' : '-high'}`;
 
         return html`
         ${this.getMenu()}
         <div class="status">
-        ${mode ? `Render Mode: ${mode}`: ''}
+        ${mode ? `${mode}`: ''}
         </div>
         <div class="buttons">
         <rev-gltf-viewer-icon name="question-circle" type="far" @click="${() => this.closeMenu()}"></rev-gltf-viewer-icon>
-        
+
         <rev-gltf-viewer-icon name="cog"       @click="${() => this.openMenu('settings')}"></rev-gltf-viewer-icon>
         <rev-gltf-viewer-icon name="lightbulb" @click="${() => this.openMenu('lighting')}" ?disabled="${this.viewer.renderPath !== 'standard'}"></rev-gltf-viewer-icon>
         <rev-gltf-viewer-icon name="camera"    @click="${() => this.openMenu('camera')}"></rev-gltf-viewer-icon>
         <rev-gltf-viewer-icon name="cube"      @click="${() => this.openMenu('model')}"></rev-gltf-viewer-icon>
+        <rev-gltf-viewer-icon name="play"      @click="${() => this.openMenu('animation')}" ?disabled="${(this.viewer.gltfSample?.animations?.length ?? 0) === 0}"></rev-gltf-viewer-icon>
         <rev-gltf-viewer-icon name="${volume}" @click="${() => this.openMenu('volume')}" ?disabled="${this.viewer.renderPath !== 'standard'}"></rev-gltf-viewer-icon>
 
         <rev-gltf-viewer-icon name="vr-cardboard" @click="${this.toggleXR}" disabled></rev-gltf-viewer-icon>
@@ -44,7 +45,7 @@ class RevGLTFViewerControls extends LitElement {
         </div>
         `;
     }
-    
+
     toggleFullscreen() {
         this.fullscreen = !this.fullscreen;
         if(this.fullscreen) {
@@ -53,35 +54,35 @@ class RevGLTFViewerControls extends LitElement {
             document.exitFullscreen();
         }
     }
-    
+
     toggleXR() {
-        
+
     }
-    
+
     openMenu(menu) {
         if(this.menu === menu) this.closeMenu();
         else this.menu = menu;
     }
-    
+
     closeMenu() {
         this.menu = '';
     }
-    
+
     getMenu() {
         const pages = this.menu.split('>').reduce((accum, value) => {
             return accum.concat(accum.length ? (accum[accum.length - 1] + '>' + value) : value)
         }, []).map(page => this.getMenuPage(page));
-        
+
         return html`
         <div class="menu" ?open="${this.menu}">
         ${pages}
         </div>`;
     }
-    
+
     getMenuPage(page) {
         const { sample, variant, material } = this.viewer;
         const materials = this.viewer.gltfSample?.extensions?.KHR_materials_variants?.variants;
-        
+
         let content = '';
         switch(page) {
             case 'model': {
@@ -110,7 +111,7 @@ class RevGLTFViewerControls extends LitElement {
                     return this.getCheckMenuItem(name, checked, () => this.viewer.sample = name);
                 })}
                 </div>
-                
+
                 `;
                 break;
             }
@@ -164,7 +165,7 @@ class RevGLTFViewerControls extends LitElement {
                 `;
                 break;
             }
-            
+
             case 'camera': {
                 const value = this.viewer.gltfSample.nodes[this.viewer.cameraId]?.camera ? this.viewer.gltfSample.nodes[this.viewer.cameraId].name ?? `#${this.viewer.cameraId}` : 'Orbit Camera';
                 content = html`
@@ -173,15 +174,15 @@ class RevGLTFViewerControls extends LitElement {
                 `;
                 break;
             }
-            
+
             case 'camera>camera': {
                 let cameras = this.viewer.gltfSample ? this.viewer.gltfSample.nodes.filter((node) => node.camera) : [];
-                
+
                 cameras = [
                     { id: -1, node: { name: 'Orbit Camera'} },
                     ...cameras.map((node) => ({ id: this.viewer.gltfSample.nodes.indexOf(node), node })),
                 ];
-                
+
                 content = html`
                 ${this.getBackMenuItem('Camera')}
                 <div class="list">
@@ -190,7 +191,7 @@ class RevGLTFViewerControls extends LitElement {
                     return this.getCheckMenuItem(node.name ?? `#${id}`, checked, () => this.viewer.cameraId = id);
                 })}
                 </div>
-                
+
                 `;
                 break;
             }
@@ -210,7 +211,7 @@ class RevGLTFViewerControls extends LitElement {
                 `;
                 break;
             }
-            
+
             case 'lighting': {
                 content = html`
                 ${this.getSubMenuItem('lighting>environment',  'Environment Lighting',           this.viewer.useEnvironment  ? 'On': 'Off')}
@@ -361,7 +362,7 @@ class RevGLTFViewerControls extends LitElement {
                 `;
                 break;
             }
-            
+
             case 'settings': {
                 content = html`
                 ${this.getSubMenuItem('settings>mode',        'Graphics Mode',    this.viewer.forceWebGL2 ? 'WebGL2': 'WebGPU')}
@@ -465,7 +466,7 @@ class RevGLTFViewerControls extends LitElement {
                 ${this.getCheckMenuItem('TAA',        this.viewer.aaMethod === 'taa',      () => this.viewer.aaMethod = 'taa' )}
                 ${this.getCheckMenuItem('MSAA + TAA', this.viewer.aaMethod === 'msaa+taa', () => this.viewer.aaMethod = 'msaa+taa' )}
                 </div>
-                
+
                 ${this.viewer.aaMethod.includes('MSAA') ? html`
                 ${this.getSubMenuItem('settings>aa>msaa-samples', 'MSAA Samples', this.viewer.msaaSamples)}
                 ` :''}
@@ -494,7 +495,7 @@ class RevGLTFViewerControls extends LitElement {
                 `;
                 break;
             }
-            
+
             case 'settings>debug': {
                 content = html`
                 ${this.getBackMenuItem('Debug')}
@@ -507,7 +508,7 @@ class RevGLTFViewerControls extends LitElement {
                 `;
                 break;
             }
-            
+
             case 'settings>debug>aabb': {
                 content = html`
                 ${this.getBackMenuItem('Bounding Boxes')}
@@ -530,14 +531,28 @@ class RevGLTFViewerControls extends LitElement {
                 `;
                 break;
             }
+
+            case 'animation': {
+                content = html`
+                <div class="list">
+                    ${this.getCheckMenuItem('None',         this.viewer.animation === '!',  () => this.viewer.animation = '!')}
+                    ${this.getCheckMenuItem('All',          this.viewer.animation === '*',  () => this.viewer.animation = '*')}
+                    <!-- ${this.getCheckMenuItem('All Sequence', this.viewer.animation === '**', () => this.viewer.animation = '**')} -->
+                    ${this.viewer.gltfSample?.animations.map(({ name }) => {
+                        return this.getCheckMenuItem(name ?? 'Unnamed', this.viewer.animation === name, () => this.viewer.animation = name)
+                    })}
+                </div>
+                `;
+                break;
+            }
         }
         return html`<div class="page" page="${page}">${content}</div>`;
     }
-    
+
     closeSubMenu() {
         this.menu = this.menu.split('>').slice(0, -1).join('>');
     }
-    
+
     getSubMenuItem(submenu, label, value, disabled) {
         return html`
         <div class="item submenu" ?disabled=${disabled} @click="${() => this.openMenu(submenu)}">
@@ -546,7 +561,7 @@ class RevGLTFViewerControls extends LitElement {
         <rev-gltf-viewer-icon name="angle-right"></rev-gltf-viewer-icon>
         </div>`;
     }
-    
+
     getBackMenuItem(label) {
         return html`
         <div class="item back" @click="${() => this.closeSubMenu()}">
@@ -555,7 +570,7 @@ class RevGLTFViewerControls extends LitElement {
         </div>
         `;
     }
-    
+
     getCheckMenuItem(label, checked, action) {
         return html`
         <div class="item check" @click="${action}" ?checked=${checked}>
@@ -564,7 +579,7 @@ class RevGLTFViewerControls extends LitElement {
         </div>
         `
     }
-    
+
     getSliderMenuItem(label, step, min, max, value, action, display) {
         return html`
         <div class="item slider">
@@ -572,7 +587,7 @@ class RevGLTFViewerControls extends LitElement {
         <input type="range" step="${step}" min="${min}" max="${max}" value="${value}" @input="${(e) => action(e) && this.update()}"/><output>${display ?? value.toFixed(2)}</output>
         </div>`;
     }
-    
+
     static get styles() {
         return css`
         :host {
@@ -582,55 +597,55 @@ class RevGLTFViewerControls extends LitElement {
             left: 0;
             background: rgba(0, 0, 0, 0.75);
             transition: opacity 0.5s ease-in-out;
-            
+
             display: flex;
             flex-direction: row;
             padding: 12px;
         }
-        
+
         :host([hidden]) {
             opacity: 0;
         }
-        
+
         .status {
             flex-grow: 1;
             user-select: none;
         }
-        
+
         .buttons {
             display: flex;
             flex-direction: row;
             justify-content: flex-end;
             gap: 16px;
         }
-        
+
         rev-gltf-viewer-icon {
             user-select: none;
             font-size: large;
         }
-        
+
         rev-gltf-viewer-icon:hover:not([disabled]) {
             cursor: pointer;
             color: #fff;
         }
-        
+
         rev-gltf-viewer-icon[disabled] {
             opacity: 0.25;
         }
-        
+
         .animation {
             display: flex;
             flex-direction: row;
             align-items: center;
             gap: 16px;
         }
-        
+
         .animation input {
             flex: 1;
             height: 3px;
             filter: grayscale(1);
         }
-        
+
         .menu {
             position: absolute;
             margin: 12px;
@@ -640,23 +655,23 @@ class RevGLTFViewerControls extends LitElement {
             opacity: 0;
             transition: opacity 0.2s;
             user-select: none;
-            
+
             display: flex;
             flex-direction: row;
         }
-        
+
         .menu[open] {
             opacity: 1;
             overflow: hidden;
         }
-        
+
         .menu .page {
             display: flex;
             flex-direction: column;
             min-width: 300px;
             /* transition: max-width 0.2s, opacity 0.2s, max-height 0.2s; */
         }
-        
+
         .menu .item {
             padding: 16px;
             display: flex;
@@ -665,15 +680,15 @@ class RevGLTFViewerControls extends LitElement {
             align-items: center;
             cursor: pointer;
         }
-        
+
         .menu .item:hover {
             background: rgba(0,0,0,0.5);
         }
-        
+
         .submenu .label {
             flex: 1;
         }
-        
+
         .submenu .value {
             max-width: 150px;
             text-overflow: ellipsis;
@@ -681,55 +696,55 @@ class RevGLTFViewerControls extends LitElement {
             white-space: nowrap;
             text-align: right;
         }
-        
+
         .submenu[disabled] {
             pointer-events: none;
             opacity: 0.25;
         }
-        
+
         .page:not(:last-child) {
             max-width: 0px;
             min-width: 0px;
             max-height: 0px;
             display: none;
         }
-        
+
         .page:last-child {
             opacity: 1;
         }
-        
+
         .page .back {
-            position: sticky; 
+            position: sticky;
             top: 0;
         }
-        
+
         .page .list {
             max-height: 50vh;
             overflow: auto;
         }
-        
+
         .page .list .item:not([checked]) rev-gltf-viewer-icon {
             opacity: 0;
         }
-        
+
         .page .screenshot {
             max-width: 300px;
             padding: 16px;
         }
-        
+
         .page a {
             color: inherit;
             padding: 16px;
         }
-        
+
         .page a:hover {
             color: var(--primary-text);
         }
-        
+
         .menu .item.slider input {
             flex: 1;
         }
-        
+
         .menu .item.slider output {
             min-width: 7ch;
             text-align: right;

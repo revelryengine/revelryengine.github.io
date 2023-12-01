@@ -1,4 +1,4 @@
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css } from '../../deps/lit.js';
 
 class RevGLTFViewerIcon extends LitElement {
     static get properties() {
@@ -7,7 +7,7 @@ class RevGLTFViewerIcon extends LitElement {
             type: { type: String, reflect: true },
         }
     }
-    
+
     static get styles() {
         return css`
         :host {
@@ -15,7 +15,7 @@ class RevGLTFViewerIcon extends LitElement {
         }
         `;
     }
-    
+
     render(){
         return html`
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css" rel="stylesheet">

@@ -1,5 +1,4 @@
-import { LitElement, html, css } from 'lit';
-import { repeat } from 'lit/directives/repeat.js';
+import { LitElement, html, css, repeat } from '../../deps/lit.js';
 
 export class RevGLTFViewerToast extends LitElement {
 

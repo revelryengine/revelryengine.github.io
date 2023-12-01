@@ -1,27 +1,24 @@
-import { html, css       } from 'lit';
-import Stats from 'stats';
+import { html, css } from '../../deps/lit.js';
+import Stats from '../../deps/stats.js';
 
 import { RevParamElement } from './param.js';
 
-import { Renderer          } from 'revelryengine/renderer/lib/renderer.js';
-import { CanvasAutoResizer } from 'revelryengine/renderer/lib/utils.js';
-import { mat4              } from 'revelryengine/renderer/deps/gl-matrix.js';
+import { Renderer          } from '../../deps/revelry.js';
+import { CanvasAutoResizer } from '../../deps/revelry.js';
 
-import { GLTF, Node                } from 'revelryengine/gltf/lib/gltf.js';
-import { KHRLightsPunctualLight    } from 'revelryengine/gltf/lib/extensions/KHR_lights_punctual.js';
-import { KHRLightsEnvironmentScene } from 'revelryengine/gltf/lib/extensions/KHR_lights_environment.js';
+import { GLTF, Node             } from '../../deps/revelry.js';
+import { KHRLightsPunctualLight } from '../../deps/revelry.js';
+import { KHREnvironmentMapScene } from '../../deps/revelry.js';
 
-import samplesIndex from 'revelryengine/sample-models/index.js';
-import envIndex     from 'revelryengine/sample-environments/index.js';
+import { samplesIndex } from '../../deps/revelry.js';
+import { envIndex     } from '../../deps/revelry.js';
+
+import { mat4 } from '../../deps/gl-matrix.js';
 
 import './controls.js';
 import './camera.js';
 import './toast.js';
 // import './vr.js';
-
-import 'revelryengine/renderer/lib/render-paths/wireframe/wireframe-path.js';
-import 'revelryengine/renderer/lib/render-paths/preview/preview-path.js';
-import 'revelryengine/renderer/lib/render-paths/solid/solid-path.js';
 
 await Renderer.requestDevice();
 
@@ -39,16 +36,16 @@ class RevGLTFViewerElement extends RevParamElement  {
 
             loadingSample: { type: Boolean },
             loadingEnv:    { type: Boolean },
-            
+
             canvas:        { type: Object },
             gltfSample:    { type: Object },
             gltfEnv:       { type: Object },
-            
+
             forceWebGL2:    { type: Boolean, param: true, default: false },
             renderPath:     { type: String, param: true, default: 'standard'},
 
             alphaBlendMode:  { type: String, param: true, default: 'ordered'},
-            
+
             useTransmission: { type: Boolean, param: true, default: true  },
             useAudio:        { type: Boolean, param: true, default: true  },
             useEnvironment:  { type: Boolean, param: true, default: true  },
@@ -68,7 +65,7 @@ class RevGLTFViewerElement extends RevParamElement  {
             msaaSamples:    { type: Number, param: true, default: 4      },
             renderScale:    { type: Number, param: true, default: defaultRenderScale },
             skyboxBlur:     { type: Number, param: true, default: 0.5 },
-            
+
             sample:        { type: String, param: true, default: 'SciFiHelmet' },
             variant:       { type: String, param: true, default: 'glTF' },
             material:      { type: String, param: true, default: '' },
@@ -78,16 +75,18 @@ class RevGLTFViewerElement extends RevParamElement  {
             envDeriveIrradiance: { type: Boolean, param: true, default: false           },
 
             tonemap:     { type: String, param: true, default: '' },
-            
+
             cameraId:    { type: Number, param: true, default: -1 },
             sceneId:     { type: Number, param: true, default: -1 },
-            
+
             showStats:   { type: Boolean, param: true, default: false  },
             debugPBR:    { type: String,  param: true, default: 'None' },
             debugAABB:   { type: Boolean, param: true, default: false  },
+
+            animation:   { type: String, param: true, default: '*'  },
         }
     }
-    
+
     constructor() {
         super();
 
@@ -95,11 +94,11 @@ class RevGLTFViewerElement extends RevParamElement  {
         this.camera   = document.createElement('rev-gltf-viewer-camera');
         this.controls = document.createElement('rev-gltf-viewer-controls');
         this.toast    = document.createElement('rev-gltf-viewer-toast');
-        
+
         this.camera.addEventListener('pointerdown', () => {
             this.controls.closeMenu();
         });
-        
+
         self.addEventListener('keydown', (e) => {
             if(e.key === 'PageDown') {
                 const index = this.samples.findIndex(({ name }) => name === this.sample);
@@ -121,15 +120,15 @@ class RevGLTFViewerElement extends RevParamElement  {
                 this.useFog = !this.useFog;
             }
         });
-        
+
         this.samples      = samplesIndex;
         this.environments = envIndex;
-        
+
         this.defaultLights = [
             new Node({
                 matrix: mat4.fromRotation(mat4.create(), Math.PI / 4, [-1, 1, 0]),
                 extensions: {
-                    KHR_lights_punctual: { 
+                    KHR_lights_punctual: {
                         light: new KHRLightsPunctualLight({ type: 'directional', intensity: 2 })
                     }
                 }
@@ -162,16 +161,16 @@ class RevGLTFViewerElement extends RevParamElement  {
     }
 
     #defaultSettings = {
-        standard:  structuredClone(Renderer.renderPathRegistry.get('standard').Settings.defaults),
-        solid:     structuredClone(Renderer.renderPathRegistry.get('solid').Settings.defaults),
-        preview:   structuredClone(Renderer.renderPathRegistry.get('preview').Settings.defaults),
-        wireframe: structuredClone(Renderer.renderPathRegistry.get('wireframe').Settings.defaults),
+        standard:  structuredClone(Renderer.renderPathRegistry.standard.Settings.defaults),
+        solid:     structuredClone(Renderer.renderPathRegistry.solid.Settings.defaults),
+        preview:   structuredClone(Renderer.renderPathRegistry.preview.Settings.defaults),
+        wireframe: structuredClone(Renderer.renderPathRegistry.wireframe.Settings.defaults),
     };
 
     get defaultSettings() {
         return this.#defaultSettings;
     }
-    
+
     createRenderer() {
         try {
             cancelAnimationFrame(this.requestId);
@@ -184,15 +183,15 @@ class RevGLTFViewerElement extends RevParamElement  {
             }
 
             console.log('Creating Renderer', settings);
-            
+
             const renderer = new Renderer(settings);
-            
+
             this.renderer = renderer;
             this.frustum  = this.renderer.createFrustum();
 
             // this.vrControl = document.createElement('rev-gltf-vr-control');
             // this.vrControl.viewer = this;
-            
+
             this.camera.renderer = this.renderer; //change this to set settings only
             this.controls.update();
 
@@ -214,29 +213,29 @@ class RevGLTFViewerElement extends RevParamElement  {
         this.createRenderer();
 
         const { canvas, renderScale } = this;
-        
+
         this.#autoResizer = new CanvasAutoResizer({ canvas, renderScale, onresize: () => {
             this.renderer.reconfigure(this.settings);
         }});
     }
-    
+
     disconnectedCallback() {
         super.disconnectedCallback();
         cancelAnimationFrame(this.requestId);
         this.#autoResizer.stop();
     }
-    
+
     updated(changedProperties) {
         super.updated(changedProperties);
-        
-        if(changedProperties.has('alphaBlendMode') 
-            || changedProperties.has('useTransmission') 
-            || changedProperties.has('useAudio') 
+
+        if(changedProperties.has('alphaBlendMode')
+            || changedProperties.has('useTransmission')
+            || changedProperties.has('useAudio')
             || changedProperties.has('useEnvironment')
-            || changedProperties.has('useSkybox') 
+            || changedProperties.has('useSkybox')
             || changedProperties.has('usePunctual')
-            || changedProperties.has('useBloom') 
-            || changedProperties.has('useSSAO') 
+            || changedProperties.has('useBloom')
+            || changedProperties.has('useSSAO')
             || changedProperties.has('useShadows')
             || changedProperties.has('useGrid')
             || changedProperties.has('useFog')
@@ -260,16 +259,16 @@ class RevGLTFViewerElement extends RevParamElement  {
         if(changedProperties.has('envSample') || changedProperties.has('envFormat') || changedProperties.has('envDeriveIrradiance')) {
             this.loadEnvironment();
         }
-        
+
         if(changedProperties.has('material')) {
             this.activateMaterial();
         }
-        
+
         if(changedProperties.has('useLens')) {
             //if(this.useLens) this.toast.addMessage(html`Depth of Field enabled.<br>Click/Tap to set focus distance.`, 5000);
         }
-        
-        
+
+
         if(changedProperties.has('forceWebGL2')) {
             if(this.renderer) {
                 const canvas  = document.createElement('canvas');
@@ -294,7 +293,7 @@ class RevGLTFViewerElement extends RevParamElement  {
         if(changedProperties.has('renderScale') && this.#autoResizer) {
             this.#autoResizer.renderScale = this.renderScale;
         }
-        
+
         this.controls.update();
     }
 
@@ -302,17 +301,18 @@ class RevGLTFViewerElement extends RevParamElement  {
         const { standard } = settings;
 
         standard.alphaBlendMode       = this.alphaBlendMode ?? 'ordered';
-        standard.transmission.enabled = this.useTransmission;
-        standard.audio.enabled        = this.useAudio;
-        standard.environment.enabled  = this.useEnvironment;
-        standard.skybox.enabled       = this.useSkybox;
-        standard.punctual.enabled     = this.usePunctual;
-        standard.shadows.enabled      = this.useShadows;
-        standard.fog.enabled          = this.useFog;
-        standard.motionBlur.enabled   = this.useMotionBlur;
-        standard.ssao.enabled         = this.useSSAO;
-        standard.lens.enabled         = this.useLens;
-        standard.bloom.enabled        = this.useBloom;
+        standard.enabled ??= {}
+        standard.enabled.transmission = this.useTransmission;
+        standard.enabled.audio        = this.useAudio;
+        standard.enabled.environment  = this.useEnvironment;
+        standard.enabled.skybox       = this.useSkybox;
+        standard.enabled.punctual     = this.usePunctual;
+        standard.enabled.shadows      = this.useShadows;
+        standard.enabled.fog          = this.useFog;
+        standard.enabled.motionBlur   = this.useMotionBlur;
+        standard.enabled.ssao         = this.useSSAO;
+        standard.enabled.lens         = this.useLens;
+        standard.enabled.bloom        = this.useBloom;
         standard.tonemap              = this.tonemap;
         standard.skybox.blur          = this.skyboxBlur;
         standard.debug = {
@@ -321,37 +321,38 @@ class RevGLTFViewerElement extends RevParamElement  {
         }
 
         for(const path of Object.values(settings)) {
-            path.grid.enabled = this.useGrid;
+            path.enabled ??= {};
+            path.enabled.grid = this.useGrid;
             switch(this.aaMethod) {
-                case 'msaa': 
-                    path.msaa.enabled = true;
+                case 'msaa':
+                    path.enabled.msaa = true;
                     break;
                 case 'taa':
-                    path.taa.enabled  = true;
-                    path.msaa.enabled = false;
+                    path.enabled.taa  = true;
+                    path.enabled.msaa = false;
                     break;
                 case 'msaa+taa':
-                    path.msaa.enabled = true;
-                    path.taa.enabled  = true;
+                    path.enabled.msaa = true;
+                    path.enabled.taa  = true;
                     break;
                 default:
-                    path.taa.enabled  = false;
-                    path.msaa.enabled = false;
+                    path.enabled.taa  = false;
+                    path.enabled.msaa = false;
             }
-    
-            path.msaa.samples = this.msaaSamples;
-            
+
+            path.msaa = { samples: this.msaaSamples };
+
         }
 
         return settings;
     }
-    
+
     render(){
         if(this.unsupported) {
             console.log('Not supported');
             return html`<p>Your browser may not support WebGPU or WebGL2</p>`;
         }
-        
+
         this.loading = !!(this.loadingSample || this.loadingEnv);
 
         return html`
@@ -364,24 +365,27 @@ class RevGLTFViewerElement extends RevParamElement  {
         <div class="loader"><rev-gltf-viewer-icon name="spinner"></rev-gltf-viewer-icon> Loading</div>
         `;
     }
-    
+
     renderGLTF(hrTime) {
         this.#stats?.begin();
 
         if (this.gltfSample) {
             const frameDeltaTime = hrTime - this.lastRenderTime;
-            this.animators?.forEach(animator => {
-                animator.update(frameDeltaTime);
-                animator.targets.nodes && this.graph.updateNodes(animator.targets.nodes);
-                animator.targets.materials && this.graph.updateMaterials(animator.targets.materials);
-            });
+
+            if(this.animation !== '!') {
+                for(const animator of this.animators) {
+                    if(this.animation !== '*' && animator.animation.name !== this.animation) continue;
+                    animator.update(frameDeltaTime);
+                    this.graph.updateAnimationTargets(animator.targets);
+                }
+            }
 
             const cameraNode = this.gltfSample.nodes[this.cameraId]?.camera ? this.gltfSample.nodes[this.cameraId] : this.camera.node;
             if(this.cameraId === -1) {
                 this.camera.updateInput(hrTime);
                 this.graph.updateNode(cameraNode);
             }
-            
+
             const { graph, frustum, renderPath } = this;
 
             this.frustum.update({ graph, cameraNode, jitter: this.settings[this.renderPath].temporal });
@@ -389,10 +393,10 @@ class RevGLTFViewerElement extends RevParamElement  {
             // if(!this.vrControl?.xrSession) this.renderer.render(scene, camera);
         }
         this.lastRenderTime = hrTime;
-        
+
         this.#stats?.end();
         this.requestId = requestAnimationFrame(t => this.renderGLTF(t));
-        
+
     }
 
     initSample() {
@@ -400,33 +404,34 @@ class RevGLTFViewerElement extends RevParamElement  {
 
         this.graph     = this.renderer.getSceneGraph(this.gltfSample.scene ?? this.gltfSample.scenes[0]);
         this.animators = this.gltfSample.animations.map(animation => animation.createAnimator());
-        
+
         if(!this.graph.lights.size) {
             this.graph.scene.nodes.push(...this.defaultLights);
             this.graph.updateNodes(new Set(this.defaultLights));
         }
 
-        if(!this.graph.scene.extensions.KHR_lights_environment) {
-            this.graph.scene.extensions.KHR_lights_environment = new KHRLightsEnvironmentScene({ light: this.defaultEnvironment });
-            
+        if(!this.graph.scene.extensions?.KHR_environment_map) {
+            this.graph.scene.extensions ??= {}
+            this.graph.scene.extensions.KHR_environment_map = new KHREnvironmentMapScene({ environment_map: this.defaultEnvironment });
+
         }
         this.activateMaterial();
         this.initEnv();
     }
-    
+
     initEnv() {
         if(!this.gltfSample || !this.gltfEnv) return;
-        
-        if(this.graph.scene.extensions.KHR_lights_environment.light.extras.sample) {
-            this.graph.scene.extensions.KHR_lights_environment = new KHRLightsEnvironmentScene({ light: this.gltfEnv.extensions.KHR_lights_environment.lights[0] });
+
+        if(this.graph.scene.extensions.KHR_environment_map.environment_map.extras.sample) {
+            this.graph.scene.extensions.KHR_environment_map = new KHREnvironmentMapScene({ environment_map: this.gltfEnv.extensions.KHR_environment_map.environment_maps[0] });
         }
     }
-    
+
     async loadSample() {
 
         const sample = this.samples.find(({ name }) => name === this.sample);
         const source = sample.variants[this.variant] ? sample.variants[this.variant] : sample.variants[Object.keys(sample.variants)[0]];
-        
+
         if(this.gltfSample?.$uri === source) return;
 
         try {
@@ -436,23 +441,24 @@ class RevGLTFViewerElement extends RevParamElement  {
             this.loadingSample = true;
 
             const gltfSample = await GLTF.load(source, this.#abortSample.signal);
+
             await this.renderer?.preloadTextures(gltfSample.textures);
 
-            if(gltfSample.extensions.KHR_audio) {
+            if(gltfSample.extensions?.KHR_audio) {
                 if(!this.renderer.audio.context) {
                     const msg = this.toast.addMessage(html`Sample includes audio.<br>Interact with page to allow sound and finish loading.`, 3000000);
                     await this.renderer.audio.contextPromise;
                     this.toast.dismissMessage(msg);
                 }
             }
-            
+
             this.gltfSample = gltfSample;
             this.initSample();
 
             this.camera.resetToScene(this.graph);
 
             await this.renderer?.precompile(this.graph);
-            
+
             this.toast.addMessage(html`Drag to Rotate<br>Scroll/Pinch to Zoom`, 3000);
 
             console.log('Sample:', this.gltfSample);
@@ -470,22 +476,26 @@ class RevGLTFViewerElement extends RevParamElement  {
         const source = env.formats[this.envFormat];
 
         try {
-        
+
             this.#abortEnv?.abort();
             this.#abortEnv = new AbortController();
 
             this.loadingEnv = true;
             this.gltfEnv = await GLTF.load(source, this.#abortEnv.signal);
-            this.gltfEnv.extensions.KHR_lights_environment.lights[0].extras.sample = true;
+
+            const environmentMap = this.gltfEnv.extensions.KHR_environment_map.environment_maps[0];
+
+            environmentMap.extras ??= {}
+            environmentMap.extras.sample = true;
 
             if(this.envDeriveIrradiance) {
-                delete this.gltfEnv.extensions.KHR_lights_environment.lights[0].irradianceCoefficients;
+                delete environmentMap.irradianceCoefficients;
             }
 
             this.initEnv();
 
             console.log('Environment:', this.gltfEnv);
-            
+
         } catch(e) {
             if(e.name !== 'AbortError') {
                 this.toast.addMessage(html`Error loading environment`, 3000);
@@ -495,7 +505,7 @@ class RevGLTFViewerElement extends RevParamElement  {
 
         this.loadingEnv = false;
     }
-    
+
     activateMaterial() {
         if(!this.material) return this.graph?.setActiveMaterialVariant(null);
 
@@ -505,13 +515,13 @@ class RevGLTFViewerElement extends RevParamElement  {
             }
         }
     }
-    
+
     static get styles() {
         return css`
         :host {
             display: flex;
             position: relative;
-            background: #3d3d3d; 
+            background: #3d3d3d;
             width: 100%;
             height: 100%;
             align-items: center;
@@ -519,16 +529,16 @@ class RevGLTFViewerElement extends RevParamElement  {
             flex-grow: 1;
             box-sizing: border-box;
         }
-        
+
         :host([loading]) canvas {
             filter: blur(12px);
         }
-        
+
         :host([loading]) .loader {
             display: inline-block;
         }
-        
-    
+
+
         .loader {
             display: none;
             position: absolute;
@@ -542,22 +552,22 @@ class RevGLTFViewerElement extends RevParamElement  {
             z-index: 3;
             user-select: none;
         }
-        
+
         .loader rev-gltf-viewer-icon {
             animation: spin 2s linear infinite;
         }
-        
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        
+
         canvas {
             width: 100%;
             height: 100%;
             touch-action: none;
         }
-        
+
         rev-gltf-viewer-camera {
             z-index: 1;
             position: absolute;
@@ -568,11 +578,11 @@ class RevGLTFViewerElement extends RevParamElement  {
             touch-action: none;
             line-height: 24px;
         }
-        
+
         rev-gltf-viewer-controls {
             z-index: 2;
         }
-        
+
         rev-gltf-viewer-toast {
             z-index: 4;
             position: absolute;

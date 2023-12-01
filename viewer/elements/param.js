@@ -1,4 +1,4 @@
-import { LitElement } from 'lit';
+import { LitElement } from '../../deps/lit.js';
 
 export function getParams() {
     // const [, match = ''] = window.location.hash.match(/\?(.*)/) || [];
@@ -38,7 +38,7 @@ export class RevParamElement extends LitElement {
         }
         super.connectedCallback();
     }
-    
+
     updated(changedProperties) {
         super.updated(changedProperties);
         for(const [name] of changedProperties) {

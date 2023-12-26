@@ -13,4 +13,4 @@ find deps/*.js | xargs deno vendor --force
 
 #### To test before release
 
-After publishing all packages and updating the importmap versions, add a `&DEVELOPMENT_MODE=false` query parameter to the url to force it to load without the importmap to local packages.
+After publishing all packages and updating the importmap versions, add a `&REVELRY_DEV_MODE=false` query parameter to the url to force it to load without the importmap to local packages.

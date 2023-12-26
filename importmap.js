@@ -1,13 +1,16 @@
-const element = document.createElement('script');
-element.type = 'importmap';
-element.textContent = JSON.stringify({
-    imports: {
-        'https://cdn.jsdelivr.net/gh/revelryengine/renderer/'            : globalThis.DEVELOPMENT_MODE ? `${location.origin}/packages/renderer/`            : 'https://cdn.jsdelivr.net/gh/revelryengine/renderer@v0.3.1-alpha/',
-        'https://cdn.jsdelivr.net/gh/revelryengine/gltf/'                : globalThis.DEVELOPMENT_MODE ? `${location.origin}/packages/gltf/`                : 'https://cdn.jsdelivr.net/gh/revelryengine/gltf@v0.3.2-alpha/',
-        'https://cdn.jsdelivr.net/gh/revelryengine/utils/'               : globalThis.DEVELOPMENT_MODE ? `${location.origin}/packages/utils/`               : 'https://cdn.jsdelivr.net/gh/revelryengine/utils@v0.3.0-alpha/',
-        'https://cdn.jsdelivr.net/gh/revelryengine/sample-environments/' : globalThis.DEVELOPMENT_MODE ? `${location.origin}/packages/sample-environments/` : 'https://cdn.jsdelivr.net/gh/revelryengine/sample-environments@v0.3.0-alpha/',
-        'https://cdn.jsdelivr.net/gh/revelryengine/sample-models/'       : globalThis.DEVELOPMENT_MODE ? `${location.origin}/packages/sample-models/`       : 'https://cdn.jsdelivr.net/gh/revelryengine/sample-models@v0.3.0-alpha/',
-    }
-});
+if(globalThis.REVELRY_DEV_MODE) {
+    const shim = document.createElement('script');
+    shim.async = true;
+    shim.src   = 'https://ga.jspm.io/npm:es-module-shims@1.6.2/dist/es-module-shims.js';
 
-document.currentScript?.after(element);
+    const element = document.createElement('script');
+    element.type = 'importmap-shim';
+    element.textContent = JSON.stringify({
+        imports: {
+            'https://cdn.jsdelivr.net/gh/revelryengine/': '/@packages/',
+        }
+    });
+
+    document.currentScript?.after(shim);
+    document.currentScript?.after(element);
+}

@@ -22,8 +22,7 @@ class RevGLTFViewerControls extends LitElement {
 
     render() {
         const mode = this.viewer.renderer?.mode;
-        const audio = this.viewer.settings?.standard?.audio ?? {};
-        const volume = `volume${audio.muted || !this.viewer.settings?.standard?.enabled.audio ? '-mute' : '-high'}`;
+        const volume = `volume${this.viewer.viewport?.audio?.muted || !this.viewer.useAudio ? '-mute' : '-high'}`;
 
         return html`
         ${this.getMenu()}
@@ -170,7 +169,7 @@ class RevGLTFViewerControls extends LitElement {
                 const value = this.viewer.gltfSample.nodes[this.viewer.cameraId]?.camera ? this.viewer.gltfSample.nodes[this.viewer.cameraId].name ?? `#${this.viewer.cameraId}` : 'Orbit Camera';
                 content = html`
                 ${this.getSubMenuItem('camera>camera', 'Camera', value)}
-                ${this.getSubMenuItem('camera>lens',   'Lens Effect', this.viewer.useLens ? 'On': 'Off', this.viewer.renderPath !== 'standard')}
+                ${this.getSubMenuItem('camera>lens',   'Lens Effect', this.viewer.useLens ? 'On': 'Off', !('lens' in this.viewer.viewport?.renderPath.settings.values))}
                 `;
                 break;
             }
@@ -197,17 +196,18 @@ class RevGLTFViewerControls extends LitElement {
             }
 
             case 'camera>lens': {
-                const lens = this.viewer.settings.standard.lens;
+                const lens = this.viewer.viewport?.renderPath.settings.values.lens;
+
                 content = html`
                 ${this.getBackMenuItem('Lens Effect')}
                 <div class="list">
                 ${this.getCheckMenuItem('On',   this.viewer.useLens, () => this.viewer.useLens = true )}
                 ${this.getCheckMenuItem('Off', !this.viewer.useLens, () => this.viewer.useLens = false )}
                 </div>
-                ${this.getSliderMenuItem('Lens Size (mm)',            1, 1.0,  100, lens.size,        (e) => lens.size  = parseFloat(e.target.value))}
-                ${this.getSliderMenuItem('F Stop',                  0.1, 1.4,   22, lens.fStop,              (e) => lens.fStop = parseFloat(e.target.value))}
-                ${this.getSliderMenuItem('Focal Length (mm)',         1, 1.0, 2000, lens.focalLength, (e) => lens.focalLength = parseFloat(e.target.value))}
-                ${this.getSliderMenuItem('Focal Distance (meters)', 0.5, 0.5,  500, lens.focalDistance / 1000,      (e) => lens.focalDistance = parseFloat(e.target.value) * 1000)}
+                ${this.getSliderMenuItem('Lens Size (mm)',            1, 1.0,  100, lens.size,                 (e) => lens.size  = parseFloat(e.target.value))}
+                ${this.getSliderMenuItem('F Stop',                  0.1, 1.4,   22, lens.fStop,                (e) => lens.fStop = parseFloat(e.target.value))}
+                ${this.getSliderMenuItem('Focal Length (mm)',         1, 1.0, 2000, lens.focalLength,          (e) => lens.focalLength = parseFloat(e.target.value))}
+                ${this.getSliderMenuItem('Focal Distance (meters)', 0.5, 0.5,  500, lens.focalDistance / 1000, (e) => lens.focalDistance = parseFloat(e.target.value) * 1000)}
                 `;
                 break;
             }
@@ -220,16 +220,15 @@ class RevGLTFViewerControls extends LitElement {
                 ${this.getSubMenuItem('lighting>bloom',        'Bloom',                          this.viewer.useBloom        ? 'On': 'Off')}
                 ${this.getSubMenuItem('lighting>ssao',         'Screen Space Ambient Occlusion', this.viewer.useSSAO         ? 'On': 'Off')}
                 ${this.getSubMenuItem('lighting>shadows',      'Shadows',                        this.viewer.useShadows      ? 'On': 'Off')}
-                ${this.getSubMenuItem('lighting>exposure',     'Exposure',                       this.viewer.settings.standard.exposure)}
+                ${this.getSubMenuItem('lighting>exposure',     'Exposure',                       this.viewer.exposure)}
                 ${this.getSubMenuItem('lighting>tonemap',      'Tonemap',                        this.viewer.tonemap)}
                 `;
                 break;
             }
             case 'lighting>exposure': {
-                const { settings } = this.viewer;
                 content = html`
                 ${this.getBackMenuItem('Exposure')}
-                ${this.getSliderMenuItem('Exposure', 0.1, 0.1, 5, settings.exposure, (e) => settings.exposure = parseFloat(e.target.value))}
+                ${this.getSliderMenuItem('Exposure', 0.1, 0.1, 5, this.viewer.exposure, (e) => this.viewer.exposure = parseFloat(e.target.value))}
                 `;
                 break;
             }
@@ -315,7 +314,7 @@ class RevGLTFViewerControls extends LitElement {
                 break;
             }
             case 'lighting>bloom': {
-                const bloom = this.viewer.settings.standard.bloom;
+                const bloom = this.viewer.viewport?.renderPath.settings.values.bloom;
                 content = html`
                 ${this.getBackMenuItem('Bloom')}
                 <div class="list">
@@ -339,7 +338,7 @@ class RevGLTFViewerControls extends LitElement {
                 break;
             }
             case 'lighting>shadows': {
-                const shadows = this.viewer.settings.standard.shadows;
+                const shadows = this.viewer.viewport?.renderPath.settings.values.shadows;
                 content = html`
                 ${this.getBackMenuItem('Shadows')}
                 <div class="list">
@@ -430,8 +429,9 @@ class RevGLTFViewerControls extends LitElement {
                 `;
                 break;
             }
+
             case 'settings>fog': {
-                const fog = this.viewer.settings.standard.fog;
+                const fog = this.viewer.viewport?.renderPath.settings.values.fog;
                 content = html`
                 ${this.getBackMenuItem('Fog')}
                 <div class="list">
@@ -445,7 +445,7 @@ class RevGLTFViewerControls extends LitElement {
             }
 
             case 'settings>motion-blur': {
-                const motionBlur = this.viewer.settings.standard.motionBlur;
+                const motionBlur = this.viewer.viewport?.renderPath.settings.values.motionBlur;
                 content = html`
                 ${this.getBackMenuItem('Motion Blur')}
                 <div class="list">
@@ -499,6 +499,7 @@ class RevGLTFViewerControls extends LitElement {
             case 'settings>debug': {
                 content = html`
                 ${this.getBackMenuItem('Debug')}
+                <div class="item" ?disabled=${!this.viewer.renderer || this.viewer.renderer.mode === 'webgpu'} @click="${() => this.viewer.spectorCapture()}">SpectorJS Capture</div>
                 ${this.getSubMenuItem('settings>debug>aabb', 'Bounding Boxes', this.viewer.debugAABB ? 'On': 'Off', 'disabled')}
                 <div class="list">
                 ${['None'].concat(Object.keys(PBR_DEBUG_MODES)).map((name) => {
@@ -521,13 +522,14 @@ class RevGLTFViewerControls extends LitElement {
             }
 
             case 'volume': {
-                const { audio } = this.viewer.settings.standard;
+                const values = this.viewer.viewport?.renderPath.settings.values;
+
                 content = html`
                 <div class="list">
                 ${this.getCheckMenuItem('On',   this.viewer.useAudio, () => this.viewer.useAudio = true )}
                 ${this.getCheckMenuItem('Off', !this.viewer.useAudio, () => this.viewer.useAudio = false )}
                 </div>
-                ${this.getSliderMenuItem('Volume', 1, 0, 100, audio.volume * 100, (e) => audio.volume = parseFloat(e.target.value) / 100)}
+                ${this.getSliderMenuItem('Volume', 1, 0, 100, values.volume * 100, (e) => values.volume = parseFloat(e.target.value) / 100)}
                 `;
                 break;
             }
@@ -627,10 +629,6 @@ class RevGLTFViewerControls extends LitElement {
         rev-gltf-viewer-icon:hover:not([disabled]) {
             cursor: pointer;
             color: #fff;
-        }
-
-        rev-gltf-viewer-icon[disabled] {
-            opacity: 0.25;
         }
 
         .animation {
@@ -750,8 +748,9 @@ class RevGLTFViewerControls extends LitElement {
             text-align: right;
         }
 
-        rev-gltf-viewer-icon[disabled] {
+        [disabled] {
             pointer-events: none;
+            opacity: 0.25;
         }
         `;
     }

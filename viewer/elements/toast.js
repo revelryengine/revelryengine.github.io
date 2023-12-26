@@ -52,6 +52,11 @@ export class RevGLTFViewerToast extends LitElement {
                     opacity: 0;
                 }
             }
+
+            a {
+                text-decoration: none;
+                color: var(--theme-color);
+            }
         `;
     }
 

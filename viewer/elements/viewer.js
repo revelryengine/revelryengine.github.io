@@ -20,7 +20,7 @@ import './camera.js';
 import './toast.js';
 // import './vr.js';
 
-await Renderer.requestDevice();
+
 
 const defaultRenderScale = Math.max(0.5, 1 / window.devicePixelRatio);
 
@@ -46,11 +46,12 @@ class RevGLTFViewerElement extends RevParamElement  {
 
             alphaBlendMode:  { type: String, param: true, default: 'ordered'},
 
-            useTransmission: { type: Boolean, param: true, default: true  },
             useAudio:        { type: Boolean, param: true, default: true  },
-            useEnvironment:  { type: Boolean, param: true, default: true  },
-            useSkybox:       { type: Boolean, param: true, default: true  },
+
             usePunctual:     { type: Boolean, param: true, default: true  },
+            useEnvironment:  { type: Boolean, param: true, default: true  },
+            useTransmission: { type: Boolean, param: true, default: true  },
+            useSkybox:       { type: Boolean, param: true, default: true  },
             useBloom:        { type: Boolean, param: true, default: false },
             useSSAO:         { type: Boolean, param: true, default: false },
             useShadows:      { type: Boolean, param: true, default: true  },
@@ -75,6 +76,7 @@ class RevGLTFViewerElement extends RevParamElement  {
             envDeriveIrradiance: { type: Boolean, param: true, default: false           },
 
             tonemap:     { type: String, param: true, default: '' },
+            exposure:    { type: Number, param: true, default: 1  },
 
             cameraId:    { type: Number, param: true, default: -1 },
             sceneId:     { type: Number, param: true, default: -1 },
@@ -149,50 +151,64 @@ class RevGLTFViewerElement extends RevParamElement  {
             ],
             extras: { sample: true }
         }
+
+        this.#autoResizer = new CanvasAutoResizer({ canvas: this.canvas, renderScale: this.renderScale, onresize: () => {
+            this.reconfigure()
+        }});
     }
 
-    get settings() {
-        return {
-            standard:  this.renderer?.renderPaths.standard.settings,
-            solid:     this.renderer?.renderPaths.solid.settings,
-            preview:   this.renderer?.renderPaths.preview.settings,
-            wireframe: this.renderer?.renderPaths.wireframe.settings,
-        };
+    spectorCapture() {
+        const spector = new SPECTOR.Spector();
+        this.toast.addMessage(html`Capturing Render...`, 2000);
+        spector.captureCanvas(this.renderer.gal.context.canvas);
+        spector.onCapture.add((json) => {
+            const url = URL.createObjectURL(new Blob([JSON.stringify(json)], { type: "text/json" }));
+            console.log(url);
+            this.toast.addMessage(html`Render Captured | <a href="${url}" download="capture.json">Download</a>`, 5000);
+        });
     }
 
-    #defaultSettings = {
-        standard:  structuredClone(Renderer.renderPathRegistry.standard.Settings.defaults),
-        solid:     structuredClone(Renderer.renderPathRegistry.solid.Settings.defaults),
-        preview:   structuredClone(Renderer.renderPathRegistry.preview.Settings.defaults),
-        wireframe: structuredClone(Renderer.renderPathRegistry.wireframe.Settings.defaults),
-    };
+    // get settings() {
+    //     return {
+    //         standard:  this.renderer?.renderPaths.standard.settings,
+    //         solid:     this.renderer?.renderPaths.solid.settings,
+    //         preview:   this.renderer?.renderPaths.preview.settings,
+    //         wireframe: this.renderer?.renderPaths.wireframe.settings,
+    //     };
+    // }
 
-    get defaultSettings() {
-        return this.#defaultSettings;
-    }
+    // #defaultSettings = {
+    //     standard:  structuredClone(Renderer.renderPathRegistry.standard.Settings.defaults),
+    //     solid:     structuredClone(Renderer.renderPathRegistry.solid.Settings.defaults),
+    //     preview:   structuredClone(Renderer.renderPathRegistry.preview.Settings.defaults),
+    //     wireframe: structuredClone(Renderer.renderPathRegistry.wireframe.Settings.defaults),
+    // };
+
+    // get defaultSettings() {
+    //     return this.#defaultSettings;
+    // }
 
     createRenderer() {
         try {
             cancelAnimationFrame(this.requestId);
             this.renderer?.destroy();
 
-            const settings = {
-                forceWebGL2 : this.forceWebGL2,
-                target: this.canvas,
-                renderPathSettings: this.reconcileSettings(this.defaultSettings)
-            }
+            console.log('Creating Renderer');
 
-            console.log('Creating Renderer', settings);
-
-            const renderer = new Renderer(settings);
+            const renderer = new Renderer({ forceWebGL2 : this.forceWebGL2 });
 
             this.renderer = renderer;
-            this.frustum  = this.renderer.createFrustum();
+
+            this.createViewport();
+            this.reconfigure();
+
+            // this.frustum  = this.renderer.createFrustum();
 
             // this.vrControl = document.createElement('rev-gltf-vr-control');
             // this.vrControl.viewer = this;
 
-            this.camera.renderer = this.renderer; //change this to set settings only
+            // this.camera.renderer = this.renderer; //change this to set settings only
+
             this.controls.update();
 
             this.initSample();
@@ -204,25 +220,22 @@ class RevGLTFViewerElement extends RevParamElement  {
         }
     }
 
+    createViewport() {
+        if(!this.renderer) throw new Error('Invalid state');
+        this.viewport = this.renderer.createViewport({ renderPath: this.renderPath, target: { type: 'canvas', canvas: this.canvas }});
+    }
+
     #autoResizer;
     async connectedCallback() {
         super.connectedCallback();
-
         await Renderer.requestDevice();
-
         this.createRenderer();
-
-        const { canvas, renderScale } = this;
-
-        this.#autoResizer = new CanvasAutoResizer({ canvas, renderScale, onresize: () => {
-            this.renderer.reconfigure(this.settings);
-        }});
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
         cancelAnimationFrame(this.requestId);
-        this.#autoResizer.stop();
+        this.#autoResizer?.stop();
     }
 
     updated(changedProperties) {
@@ -247,8 +260,18 @@ class RevGLTFViewerElement extends RevParamElement  {
             || changedProperties.has('skyboxBlur')
             || changedProperties.has('debugPBR')
             || changedProperties.has('debugAABB')) {
-            if(this.renderer) {
-                this.renderer.reconfigure(this.reconcileSettings(this.settings));
+            this.reconfigure();
+        }
+
+        if(changedProperties.has('exposure')) {
+            if(this.viewport && 'exposure' in this.viewport.renderPath.settings) {
+                this.viewport.renderPath.settings.values.exposure = this.exposure;
+            }
+        }
+
+        if(changedProperties.has('skyboxBlur')) {
+            if(this.viewport && 'skybox' in this.viewport.renderPath.settings) {
+                this.viewport.renderPath.settings.values.skybox.blur = this.skyboxBlur;
             }
         }
 
@@ -269,20 +292,16 @@ class RevGLTFViewerElement extends RevParamElement  {
         }
 
 
-        if(changedProperties.has('forceWebGL2')) {
-            if(this.renderer) {
-                const canvas  = document.createElement('canvas');
-                canvas.width  = this.canvas.width;
-                canvas.height = this.canvas.height;
+        if(changedProperties.has('forceWebGL2') && this.renderer) {
+            this.createRenderer();
+        }
 
-                this.canvas = canvas;
-                this.createRenderer();
+        if(changedProperties.has('renderPath') && this.renderer) {
+            this.createViewport();
+        }
 
-                this.#autoResizer?.stop();
-                this.#autoResizer = new CanvasAutoResizer({ canvas, renderScale: this.renderScale, onresize: () => {
-                    this.renderer.reconfigure({ standard: this.settings });
-                }});
-            }
+        if(changedProperties.has('renderScale')) {
+            this.#autoResizer.renderScale = this.renderScale;
         }
 
         if(changedProperties.has('showStats')) {
@@ -290,61 +309,61 @@ class RevGLTFViewerElement extends RevParamElement  {
             this.update();
         }
 
-        if(changedProperties.has('renderScale') && this.#autoResizer) {
-            this.#autoResizer.renderScale = this.renderScale;
-        }
-
         this.controls.update();
     }
 
-    reconcileSettings(settings) {
-        const { standard } = settings;
+    reconfigure() {
+        if(!this.viewport) return;
 
-        standard.alphaBlendMode       = this.alphaBlendMode ?? 'ordered';
-        standard.enabled ??= {}
-        standard.enabled.transmission = this.useTransmission;
-        standard.enabled.audio        = this.useAudio;
-        standard.enabled.environment  = this.useEnvironment;
-        standard.enabled.skybox       = this.useSkybox;
-        standard.enabled.punctual     = this.usePunctual;
-        standard.enabled.shadows      = this.useShadows;
-        standard.enabled.fog          = this.useFog;
-        standard.enabled.motionBlur   = this.useMotionBlur;
-        standard.enabled.ssao         = this.useSSAO;
-        standard.enabled.lens         = this.useLens;
-        standard.enabled.bloom        = this.useBloom;
-        standard.tonemap              = this.tonemap;
-        standard.skybox.blur          = this.skyboxBlur;
-        standard.debug = {
-            pbr:  { enabled: this.debugPBR !== 'None', mode: this.debugPBR },
-            aabb: { enabled: this.debugAABB },
+        const { settings } = this.viewport.renderPath;
+
+        settings.flags.outline = false;
+
+        if('alphaBlendMode' in settings.flags) {
+            settings.flags.alphaBlendMode = this.alphaBlendMode ?? 'ordered';
         }
 
-        for(const path of Object.values(settings)) {
-            path.enabled ??= {};
-            path.enabled.grid = this.useGrid;
-            switch(this.aaMethod) {
-                case 'msaa':
-                    path.enabled.msaa = true;
-                    break;
-                case 'taa':
-                    path.enabled.taa  = true;
-                    path.enabled.msaa = false;
-                    break;
-                case 'msaa+taa':
-                    path.enabled.msaa = true;
-                    path.enabled.taa  = true;
-                    break;
-                default:
-                    path.enabled.taa  = false;
-                    path.enabled.msaa = false;
+        if('tonemap' in settings.flags) {
+            settings.flags.tonemap = this.tonemap;
+        }
+
+        if('skybox' in settings.values) {
+            settings.values.skybox.blur = this.skyboxBlur;
+        }
+
+        for(const prop of ['punctual', 'environment', 'transmission', 'audio', 'skybox', 'shadows', 'fog', 'motionBlur', 'lens', 'bloom', 'grid']) {
+            if(prop in settings.flags) {
+                settings.flags[prop] = this[`use${prop.slice(0, 1).toUpperCase()}${prop.slice(1)}`];
             }
-
-            path.msaa = { samples: this.msaaSamples };
-
         }
 
-        return settings;
+        if('ssao' in settings.flags) {
+            settings.flags.ssao = this.useSSAO;
+        }
+
+        switch(this.aaMethod) {
+            case 'msaa':
+                settings.flags.msaa = 4;
+                break;
+            case 'taa':
+                settings.flags.taa  = true;
+                settings.flags.msaa = 1;
+                break;
+            case 'msaa+taa':
+                settings.flags.msaa = 4;
+                settings.flags.taa  = true;
+                break;
+            default:
+                settings.flags.taa  = false;
+                settings.flags.msaa = 1;
+        }
+
+        if('debugPBR' in settings.flags) {
+            settings.flags.debugPBR  = this.debugPBR;
+            settings.flags.debugAABB = this.debugAABB;
+        }
+
+        this.viewport.reconfigure();
     }
 
     render(){
@@ -356,13 +375,13 @@ class RevGLTFViewerElement extends RevParamElement  {
         this.loading = !!(this.loadingSample || this.loadingEnv);
 
         return html`
-        ${this.#stats?.dom ?? ''}
-        ${this.camera}
-        ${this.canvas}
-        ${this.vrControl}
-        ${this.controls}
-        ${this.toast}
-        <div class="loader"><rev-gltf-viewer-icon name="spinner"></rev-gltf-viewer-icon> Loading</div>
+            ${this.#stats?.dom ?? ''}
+            ${this.camera}
+            ${this.canvas}
+            ${this.vrControl}
+            ${this.controls}
+            ${this.toast}
+            <div class="loader"><rev-gltf-viewer-icon name="spinner"></rev-gltf-viewer-icon> Loading</div>
         `;
     }
 
@@ -386,10 +405,12 @@ class RevGLTFViewerElement extends RevParamElement  {
                 this.graph.updateNode(cameraNode);
             }
 
-            const { graph, frustum, renderPath } = this;
+            const { graph, viewport } = this;
 
-            this.frustum.update({ graph, cameraNode, jitter: this.settings[this.renderPath].temporal });
-            this.renderer.render({ graph, frustum, renderPath });
+            viewport.render({ graph, cameraNode });
+
+            // this.frustum.update({ graph, cameraNode, jitter: this.settings[this.renderPath].temporal });
+            // this.renderer.render({ graph, frustum, renderPath });
             // if(!this.vrControl?.xrSession) this.renderer.render(scene, camera);
         }
         this.lastRenderTime = hrTime;
@@ -457,7 +478,7 @@ class RevGLTFViewerElement extends RevParamElement  {
 
             this.camera.resetToScene(this.graph);
 
-            await this.renderer?.precompile(this.graph);
+            await this.viewport?.precompile(this.graph);
 
             this.toast.addMessage(html`Drag to Rotate<br>Scroll/Pinch to Zoom`, 3000);
 

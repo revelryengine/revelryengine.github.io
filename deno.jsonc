@@ -1,7 +1,0 @@
-{
-  "imports": {
-    "https://cdn.jsdelivr.net/gh/revelryengine/": "../packages/"
-  },
-  "lock": false,
-  "importMap": "./vendor/import_map.json"
-}

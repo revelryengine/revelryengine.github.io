@@ -1,7 +1,7 @@
 import { LitElement, html, css } from '../../deps/lit.js';
 
-import { Camera, Node     } from 'https://cdn.jsdelivr.net/gh/revelryengine/gltf/lib/gltf.js';
-import { vec3, mat4, quat } from 'https://cdn.jsdelivr.net/gh/revelryengine/renderer/deps/gl-matrix.js';
+import { Camera, Node     } from '../../deps/revelry.js';
+import { vec3, mat4, quat } from '../../deps/gl-matrix.js';
 
 const tmpV = vec3.create();
 
@@ -239,19 +239,19 @@ export class ViewerCamera extends LitElement {
         this.position = position;
         this.target = target;
 
-        /** DOF parameter adjustment */
-        if(this.renderer.settings?.dof?.enabled){
-            if(this.input.dof.time) {
-                const t = (hrTime - this.input.dof.time) / this.speed.focus;
-                this.renderer.settings.dof.distance = lerp(this.input.dof.start, this.input.dof.end, t);
-                if(t > 1) {
-                    this.input.dof.time = 0;
-                }
-            }
-            if(input.roll + input.pitch + input.zoom + input.pan[0] + input.pan[1] === 0) {
-                // this.focusCenter();
-            }
-        }
+        // /** DOF parameter adjustment */
+        // if(this.renderer.settings?.dof?.enabled){
+        //     if(this.input.dof.time) {
+        //         const t = (hrTime - this.input.dof.time) / this.speed.focus;
+        //         this.renderer.settings.dof.distance = lerp(this.input.dof.start, this.input.dof.end, t);
+        //         if(t > 1) {
+        //             this.input.dof.time = 0;
+        //         }
+        //     }
+        //     if(input.roll + input.pitch + input.zoom + input.pan[0] + input.pan[1] === 0) {
+        //         // this.focusCenter();
+        //     }
+        // }
         // console.log(this.renderer.settings.dof.range);
     }
 
@@ -282,14 +282,14 @@ export class ViewerCamera extends LitElement {
     }
 
     focus(x, y) {
-        if(this.renderer.settings?.dof?.enabled){
-            this.focusRing.x = x;
-            this.focusRing.y = y;
-            this.focusRing.active = true;
-            this.input.dof.start = this.renderer.settings.dof.distance;
-            this.input.dof.end   = this.renderer.getDistanceAtPoint(x, this.offsetHeight - y);
-            this.input.dof.time  = performance.now();
-        }
+        // if(this.renderer.settings?.dof?.enabled){
+        //     this.focusRing.x = x;
+        //     this.focusRing.y = y;
+        //     this.focusRing.active = true;
+        //     this.input.dof.start = this.renderer.settings.dof.distance;
+        //     this.input.dof.end   = this.renderer.getDistanceAtPoint(x, this.offsetHeight - y);
+        //     this.input.dof.time  = performance.now();
+        // }
     }
 
     focusCenter() {

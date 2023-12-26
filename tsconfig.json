@@ -15,10 +15,5 @@
         "outDir": "types",
         "checkJs": false,
         "allowImportingTsExtensions":true,
-        "noErrorTruncation": true,
-        "paths": {
-            "https://cdn.jsdelivr.net/gh/revelryengine/*": ["../packages/*"],
-            "https://*": ["./vendor/*"]
-        }
     }
 }
